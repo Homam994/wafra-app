@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">وفرة</string>
+    <string name="shortcut_expense_short">مصروف</string>
+    <string name="shortcut_expense_long">إضافة مصروف سريع</string>
+    <string name="shortcut_income_short">دخل</string>
+    <string name="shortcut_income_long">إضافة دخل سريع</string>
+    <string name="widget_stats_desc">إحصائيات الشهر — دخل ومصاريف</string>
+    <string name="widget_quick_desc">تسجيل معاملة سريعة</string>
+</resources>

@@ -1,0 +1,68 @@
+name: wafra
+description: وفرة — إدارة مالية ذكية
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:          # ← دعم العربية الكامل
+    sdk: flutter
+
+  # Firebase (أحدث إصدارات مستقرة)
+  firebase_core: ^3.8.0
+  firebase_auth: ^5.3.2
+  cloud_firestore: ^5.5.0
+
+  # Security
+  firebase_messaging: ^15.2.7
+  flutter_local_notifications: ^18.0.1
+  flutter_secure_storage: ^9.2.2
+  local_auth: ^2.3.0
+  crypto: ^3.0.5
+
+  # State
+  provider: ^6.1.2
+
+  # Charts
+  fl_chart: ^0.69.0
+
+  # UI & Fonts
+  google_fonts: ^6.2.1
+  flutter_animate: ^4.5.0
+
+  # Utils
+  shared_preferences: ^2.3.3
+  connectivity_plus: ^6.1.1     # إصدار ثابت مع API الصحيح
+  intl: ^0.20.2
+  share_plus: ^10.1.4
+  path_provider: ^2.1.5
+
+  # SMS — لربط رسائل البنوك
+  permission_handler: ^11.3.1
+  collection: ^1.18.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "#0a0a0f"
+  adaptive_icon_foreground: "assets/icon/icon_fg.png"
+  adaptive_icon_monochrome: "assets/icon/icon_fg.png"
+  remove_alpha_ios: true
+  min_sdk_android: 21
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icon/
+    - assets/images/

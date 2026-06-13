@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "360975195166",
+    "project_id": "wafraa-app",
+    "storage_bucket": "wafraa-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:360975195166:android:7baaf5c65b6124d490a20f",
+        "android_client_info": {
+          "package_name": "com.wafra.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC0_JpDGpNTAb4rlMGwZeuPvtLsRY2PYEQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:360975195166:android:ec7f7df84907c40e90a20f",
+        "android_client_info": {
+          "package_name": "com.wafra.wafra"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC0_JpDGpNTAb4rlMGwZeuPvtLsRY2PYEQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
