@@ -59,16 +59,18 @@ class MainActivity : FlutterFragmentActivity() {
             flutterEngine.dartExecutor.binaryMessenger, WIDGET_CHANNEL
         ).setMethodCallHandler { call, result ->
             if (call.method == "updateWidget") {
-                val intentStats = android.content.Intent(this,
-                    WafraStatsWidgetReceiver::class.java).apply {
-                    action = android.appwidget.AppWidgetManager.ACTION_APPWIDGET_UPDATE
-                }
-                val intentQuick = android.content.Intent(this,
-                    WafraQuickWidgetReceiver::class.java).apply {
-                    action = android.appwidget.AppWidgetManager.ACTION_APPWIDGET_UPDATE
-                }
-                sendBroadcast(intentStats)
-                sendBroadcast(intentQuick)
+                val mgr = android.appwidget.AppWidgetManager.getInstance(this)
+
+                // تحديث Stats Widget مباشرة بدون broadcast
+                val statsIds = mgr.getAppWidgetIds(
+                    android.content.ComponentName(this, WafraStatsWidgetReceiver::class.java))
+                statsIds.forEach { updateStatsWidget(this, mgr, it) }
+
+                // تحديث Quick Widget مباشرة
+                val quickIds = mgr.getAppWidgetIds(
+                    android.content.ComponentName(this, WafraQuickWidgetReceiver::class.java))
+                quickIds.forEach { updateQuickWidget(this, mgr, it) }
+
                 result.success(null)
             } else result.notImplemented()
         }

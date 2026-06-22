@@ -7,6 +7,7 @@ import '../data/models/sms_models.dart';
 import '../data/models/models.dart';
 import '../data/services/sms_storage_service.dart';
 import '../data/services/sms_parser.dart';
+import '../data/services/notification_service.dart';
 import '../data/repositories/firestore_repo.dart';
 
 class SmsProvider extends ChangeNotifier {
@@ -72,8 +73,22 @@ class SmsProvider extends ChangeNotifier {
   //  الاستماع لـ SMS من Kotlin
   // ══════════════════════════════════════
   void _startListening() {
-    _channel.setMethodCallHandler(_handleSmsFromNative);
-    // فرّغ الرسائل المعلّقة التي وصلت أثناء إغلاق التطبيق
+    // استخدام setMethodCallHandler مع ضمان إرجاع النتيجة لـ Kotlin
+    // بعد اكتمال المعالجة الكاملة (await) — هذا يُمكّن الإرسال المتسلسل
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'onSmsReceived') {
+        final args = Map<String, dynamic>.from(call.arguments as Map);
+        final sender     = args['sender']    as String? ?? '';
+        final message    = args['message']   as String? ?? '';
+        final timestamp  = args['timestamp'] as int?;
+        final receivedAt = timestamp != null
+            ? DateTime.fromMillisecondsSinceEpoch(timestamp)
+            : DateTime.now();
+        // await يضمن انتهاء الحفظ في Firestore قبل إعادة النتيجة لـ Kotlin
+        await _processSms(sender: sender, message: message, receivedAt: receivedAt);
+        return null; // → يُطلق result.success(null) في Kotlin → flushNext يكمل
+      }
+    });
     _flushPending();
   }
 
@@ -93,19 +108,6 @@ class SmsProvider extends ChangeNotifier {
     if (_smsEnabled) await _flushPending();
   }
 
-  // يُستدعى من Kotlin عند وصول SMS جديد
-  Future<dynamic> _handleSmsFromNative(MethodCall call) async {
-    if (call.method != 'onSmsReceived') return;
-    final args = Map<String, dynamic>.from(call.arguments as Map);
-    final sender  = args['sender']  as String? ?? '';
-    final message = args['message'] as String? ?? '';
-    final timestamp = args['timestamp'] as int?;
-    final receivedAt = timestamp != null
-        ? DateTime.fromMillisecondsSinceEpoch(timestamp)
-        : DateTime.now();
-
-    await _processSms(sender: sender, message: message, receivedAt: receivedAt);
-  }
 
   // ══════════════════════════════════════
   //  معالجة رسالة SMS واردة
@@ -152,12 +154,23 @@ class SmsProvider extends ChangeNotifier {
       return;
     }
 
-    // ٥. أشعر المستخدم
+    // ٥. أشعر المستخدم (snackbar داخل التطبيق)
     final amountStr = result.amount!.toStringAsFixed(2);
     final typeStr   = result.txType == 'income' ? '📥 دخل' : '📤 مصروف';
     onAlert?.call(
       '$typeStr · $amountStr من ${result.bankName ?? sender}',
       false,
+    );
+
+    // ٥ب. إشعار فوري على الهاتف
+    final notifTitle = result.txType == 'income'
+        ? '📥 دخل مُسجَّل تلقائياً'
+        : '📤 مصروف مُسجَّل تلقائياً';
+    final bankLabel = result.bankName ?? sender;
+    final descLabel = desc.isNotEmpty ? ' · $desc' : '';
+    await NotificationService.instance.showGeneral(
+      title: notifTitle,
+      body : '$amountStr$descLabel — $bankLabel',
     );
 
     // ٦. إن لم يكن التاجر في القاموس → أضفه للقائمة غير المُصنَّفة

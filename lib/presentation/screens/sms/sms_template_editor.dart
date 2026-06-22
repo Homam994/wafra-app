@@ -116,8 +116,6 @@ class _SmsTemplateEditorState extends State<SmsTemplateEditor> {
             decoration : InputDecoration(
               hintText     : 'الصق الرسالة هنا...\n\nمثال:\nتم الخصم من حسابك مبلغ 250.00 ريال\nلدى مطعم الباشا',
               hintStyle    : const TextStyle(fontSize: 12, color: WaColors.textMuted),
-              filled       : true,
-              fillColor    : WaColors.obsidian3,
               border       : OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide  : const BorderSide(color: WaColors.border),
@@ -153,8 +151,6 @@ class _SmsTemplateEditorState extends State<SmsTemplateEditor> {
                 hintText : hint,
                 hintStyle: const TextStyle(fontSize: 12, color: WaColors.textMuted),
                 isDense  : true,
-                filled   : true,
-                fillColor: WaColors.obsidian3,
                 border   : OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide  : const BorderSide(color: WaColors.border),
@@ -267,8 +263,6 @@ class _SmsTemplateEditorState extends State<SmsTemplateEditor> {
             decoration : InputDecoration(
               hintText : 'الصق رسالة مختلفة من نفس البنك...',
               hintStyle: const TextStyle(fontSize: 12, color: WaColors.textMuted),
-              filled   : true,
-              fillColor: WaColors.obsidian3,
               border   : OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide  : const BorderSide(color: WaColors.border),
@@ -317,9 +311,9 @@ class _SmsTemplateEditorState extends State<SmsTemplateEditor> {
   // ══════════════════════════════════════
   Widget _buildNavBar() => Container(
     padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-    decoration: const BoxDecoration(
-      color: WaColors.obsidian2,
-      border: Border(top: BorderSide(color: WaColors.border)),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surface,
+      border: const Border(top: BorderSide(color: WaColors.border)),
     ),
     child: Row(children: [
       if (_step > 0)
@@ -446,6 +440,8 @@ class _TaggedMessageView extends StatelessWidget {
       _buildTextSpan(),
       textDirection: TextDirection.rtl,
       style: const TextStyle(fontSize: 14, height: 1.7),
+      // إخفاء شريط النسخ/القص — التحديد يُفعّل onSelectionChanged مباشرة
+      contextMenuBuilder: (_, __) => const SizedBox.shrink(),
       onSelectionChanged: (selection, _) {
         if (selection.isCollapsed) return;
         final base   = selection.baseOffset;
@@ -519,7 +515,7 @@ class _TypeToolbar extends StatelessWidget {
     ];
     return Container(
       height     : 52,
-      color      : WaColors.obsidian2,
+      color      : Theme.of(context).colorScheme.surface,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding        : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -535,7 +531,7 @@ class _TypeToolbar extends StatelessWidget {
               decoration: BoxDecoration(
                 color : isSelected
                     ? color.withValues(alpha: 0.2)
-                    : WaColors.obsidian3,
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
                 border: Border.all(
                   color: isSelected ? color : WaColors.border,
                   width: isSelected ? 1.5 : 1,

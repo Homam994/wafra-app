@@ -12,14 +12,28 @@ import '../../../data/models/models.dart';
 import '../../widgets/common/wa_card.dart';
 import '../../widgets/transaction/tx_list_item.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+  @override State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  // 0 = الشهر الحالي، -1 = الشهر الماضي، إلخ
+  int _monthOffset = 0;
+
+  DateTime get _month {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month + _monthOffset);
+  }
+
+  void _change(int delta) => setState(() => _monthOffset += delta);
 
   @override
   Widget build(BuildContext context) {
     final ap      = context.watch<AppProvider>();
-    final now     = DateTime.now();
-    final mTxs    = ap.txForMonth(now.year, now.month);
+    final month   = _month;
+    final isCurrentMonth = _monthOffset == 0;
+    final mTxs    = ap.txForMonth(month.year, month.month);
     final income  = ap.totalIncome(mTxs);
     final expense = ap.totalExpense(mTxs);
     final totInc  = ap.totalIncome(ap.transactions);
@@ -57,6 +71,57 @@ class DashboardScreen extends StatelessWidget {
             ]),
           ).animate().fadeIn(duration: 400.ms),
 
+          // ── Month Navigator ─────────────────────
+          Container(
+            margin      : const EdgeInsets.only(bottom: 14),
+            padding     : const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+            decoration  : BoxDecoration(
+              color       : Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border      : Border.all(color: WaColors.border),
+            ),
+            child: Row(children: [
+              // السهم الأيمن = الشهر السابق (RTL)
+              IconButton(
+                onPressed: () => _change(-1),
+                icon     : const Icon(Icons.chevron_left_rounded),
+                color    : WaColors.textSecondary,
+                iconSize : 22,
+                padding  : EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              ),
+              Expanded(child: GestureDetector(
+                onTap: isCurrentMonth ? null : () => setState(() => _monthOffset = 0),
+                child: Column(children: [
+                  Text(
+                    '${_monthName(month.month)} ${month.year}',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize  : 14,
+                      fontWeight: FontWeight.w700,
+                      color     : isCurrentMonth ? WaColors.gold : null,
+                    ),
+                  ),
+                  if (!isCurrentMonth)
+                    Text('اضغط للعودة للشهر الحالي',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 10, color: WaColors.textMuted)),
+                ]),
+              )),
+              // السهم الأيسر = الشهر التالي (RTL)
+              IconButton(
+                onPressed: isCurrentMonth ? null : () => _change(1),
+                icon     : const Icon(Icons.chevron_right_rounded),
+                color    : isCurrentMonth
+                    ? WaColors.border
+                    : WaColors.textSecondary,
+                iconSize : 22,
+                padding  : EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              ),
+            ]),
+          ).animate().fadeIn(duration: 300.ms),
+
           // ── Stats ──────────────────────────────
           GridView.count(
             shrinkWrap: true,
@@ -64,15 +129,31 @@ class DashboardScreen extends StatelessWidget {
             crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10,
             childAspectRatio: 1.55,
             children: [
-              _StatCard('الرصيد الكلي',    ap.fmt(balance), WaColors.gold,    Icons.account_balance_wallet_outlined),
-              _StatCard('مداخيل الشهر',    ap.fmt(income),  WaColors.success,  Icons.trending_up_rounded),
-              _StatCard('مصاريف الشهر',    ap.fmt(expense), WaColors.danger,   Icons.trending_down_rounded),
+              _StatCard('الرصيد الكلي',  ap.fmt(balance), WaColors.gold,    Icons.account_balance_wallet_outlined),
+              _StatCard('مداخيل الشهر',  ap.fmt(income),  WaColors.success,  Icons.trending_up_rounded),
+              _StatCard('مصاريف الشهر',  ap.fmt(expense), WaColors.danger,   Icons.trending_down_rounded),
               _StatCard('معدل الادخار',
-                  income > 0 ? '$savePct%' : '—', WaColors.info, Icons.savings_outlined),
+                  income > 0 ? '$savePct%' : '—', WaColors.info,
+                  Icons.track_changes_rounded),
             ],
           ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.08),
 
           const SizedBox(height: 14),
+
+          // ── Donut ──────────────────────────────
+          if (expense > 0)
+            WaCard(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('توزيع المصاريف',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                Text('الشهر الحالي',
+                  style: TextStyle(fontSize: 11, color: WaColors.textMuted)),
+                const SizedBox(height: 14),
+                _DonutChart(txs: mTxs, ap: ap),
+              ]),
+            ).animate(delay: 100.ms).fadeIn(),
+
+          const SizedBox(height: 12),
 
           // ── Bar Chart ──────────────────────────
           WaCard(
@@ -90,22 +171,7 @@ class DashboardScreen extends StatelessWidget {
                 _legend(WaColors.success, 'مداخيل'),
               ]),
             ]),
-          ).animate(delay: 100.ms).fadeIn(),
-
-          const SizedBox(height: 12),
-
-          // ── Donut ──────────────────────────────
-          if (expense > 0)
-            WaCard(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('توزيع المصاريف',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                Text('الشهر الحالي',
-                  style: TextStyle(fontSize: 11, color: WaColors.textMuted)),
-                const SizedBox(height: 14),
-                _DonutChart(txs: mTxs, ap: ap),
-              ]),
-            ).animate(delay: 150.ms).fadeIn(),
+          ).animate(delay: 150.ms).fadeIn(),
 
           const SizedBox(height: 12),
 
@@ -144,6 +210,11 @@ class DashboardScreen extends StatelessWidget {
     const days   = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
     return '${days[n.weekday % 7]}، ${n.day} ${months[n.month-1]} ${n.year}';
   }
+
+  String _monthName(int m) => const [
+    'يناير','فبراير','مارس','أبريل','مايو','يونيو',
+    'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر',
+  ][m - 1];
 
   Widget _legend(Color color, String label) => Row(children: [
     Container(width:10, height:10,

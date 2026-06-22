@@ -19,6 +19,8 @@ import '../transactions/transactions_screen.dart';
 import '../income/income_screen.dart';
 import '../expenses/expenses_screen.dart';
 import '../reports/reports_screen.dart';
+import '../analytics/analytics_screen.dart';
+import '../bills/bills_screen.dart';
 import '../budget/budget_screen.dart';
 import '../recurring/recurring_screen.dart';
 import '../categories/categories_screen.dart';
@@ -49,6 +51,8 @@ class _HomeScreenState extends State<HomeScreen> {
     DashboardScreen(), TransactionsScreen(), IncomeScreen(),
     ExpensesScreen(), BudgetScreen(), RecurringScreen(),
     ReportsScreen(), CategoriesScreen(), SettingsScreen(),
+    AnalyticsScreen(),  // index 9
+    BillsScreen(),      // index 10
   ];
   static const _navOrder = [0, 1, 4, 6];
 
@@ -274,6 +278,9 @@ class _HomeScreenState extends State<HomeScreen> {
           _dSec('التحليل'),
           _dItem(Icons.bar_chart_rounded,     'التقارير الشهرية',  6),
           _dItem(Icons.pie_chart,             'تحليل التصنيفات',   7),
+          _dItem(Icons.insights_rounded,      'إحصائيات متقدمة',   9),
+          _dSec('المدفوعات'),
+          _dItem(Icons.receipt_long_outlined, 'الفواتير والاشتراكات', 10),
           _dSec('الأدوات الذكية'),
           _dItemNav(Icons.sms_outlined, 'ربط رسائل البنوك', () {
             Navigator.pop(context);

@@ -4,17 +4,21 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.os.Handler
+import android.os.Looper
 import android.provider.Telephony
+import io.flutter.plugin.common.MethodChannel
 import org.json.JSONArray
 import org.json.JSONObject
 
 // ════════════════════════════════════════════════════════════
-//  SmsReceiver v2 — يعمل حتى لو كان التطبيق مغلقاً
+//  SmsReceiver v4 — إرسال رسائل متعددة بشكل متسلسل
 //
-//  الحل:
-//  ١. يحفظ الرسائل في SharedPreferences (queue محلي)
-//  ٢. يحاول إرسالها لـ Flutter إن كان التطبيق مفتوحاً
-//  ٣. عند فتح التطبيق يُفرَّغ الـ queue تلقائياً
+//  الإصلاح الجوهري:
+//  بدلاً من إرسال كل الرسائل دفعة واحدة (fire & forget)،
+//  ننتظر Flutter يُنهي معالجة كل رسالة (await) قبل إرسال
+//  التالية — هذا يضمن تسجيل جميع المشتريات حتى لو وصلت
+//  في نفس الثانية
 // ════════════════════════════════════════════════════════════
 class SmsReceiver : BroadcastReceiver() {
 
@@ -22,48 +26,75 @@ class SmsReceiver : BroadcastReceiver() {
         const val PREFS_NAME  = "wafra_sms_queue"
         const val KEY_PENDING = "pending_messages"
 
-        // يُفرَّغ الـ queue عند فتح التطبيق
+        // هل الـ flush جارٍ حالياً؟ (لمنع التشغيل المتوازي)
+        private var isFlushing = false
+
+        // يُفرَّغ الـ queue رسالةً رسالةً مع انتظار Flutter بعد كل واحدة
         fun flushPendingMessages(context: Context) {
-            val prefs    = getPrefs(context)
-            val raw      = prefs.getString(KEY_PENDING, "[]") ?: "[]"
-            val pending  = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
-
-            if (pending.length() == 0) return
-
+            if (isFlushing) return
             val channel = MainActivity.smsChannel ?: return
 
-            val sent = mutableListOf<Int>()
-            for (i in 0 until pending.length()) {
-                try {
-                    val obj = pending.getJSONObject(i)
-                    channel.invokeMethod(
-                        "onSmsReceived",
-                        mapOf(
-                            "sender"    to obj.getString("sender"),
-                            "message"   to obj.getString("message"),
-                            "timestamp" to obj.getLong("timestamp"),
-                        )
-                    )
-                    sent.add(i)
-                } catch (_: Exception) { break } // channel غير جاهز بعد
+            val prefs   = getPrefs(context)
+            val raw     = prefs.getString(KEY_PENDING, "[]") ?: "[]"
+            val pending = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
+            if (pending.length() == 0) return
+
+            isFlushing = true
+            flushNext(context, channel, pending, 0)
+        }
+
+        // إرسال رسالة واحدة ثم انتظار Flutter للرد قبل الانتقال للتالية
+        private fun flushNext(
+            context: Context,
+            channel: MethodChannel,
+            pending: JSONArray,
+            index: Int
+        ) {
+            if (index >= pending.length()) {
+                // انتهينا — امسح الـ queue كله
+                getPrefs(context).edit().putString(KEY_PENDING, "[]").apply()
+                isFlushing = false
+                return
             }
 
-            // احذف الرسائل التي أُرسلت
-            if (sent.size == pending.length()) {
-                // كلها أُرسلت — امسح الكل
-                prefs.edit().putString(KEY_PENDING, "[]").apply()
-            } else if (sent.isNotEmpty()) {
-                // بعضها — احذف المُرسَلة فقط
-                val remaining = JSONArray()
-                for (i in 0 until pending.length()) {
-                    if (i !in sent) remaining.put(pending.get(i))
-                }
-                prefs.edit().putString(KEY_PENDING, remaining.toString()).apply()
+            val obj = try { pending.getJSONObject(index) }
+                      catch (_: Exception) {
+                          flushNext(context, channel, pending, index + 1)
+                          return
+                      }
+
+            // يجب استدعاء invokeMethod من الـ main thread
+            Handler(Looper.getMainLooper()).post {
+                channel.invokeMethod(
+                    "onSmsReceived",
+                    mapOf(
+                        "sender"    to obj.optString("sender"),
+                        "message"   to obj.optString("message"),
+                        "timestamp" to obj.optLong("timestamp", System.currentTimeMillis()),
+                    ),
+                    // MethodChannel.Result — يُستدعى عندما ينهي Flutter المعالجة
+                    object : MethodChannel.Result {
+                        override fun success(result: Any?) {
+                            // Flutter أنهى معالجة هذه الرسالة → انتقل للتالية
+                            flushNext(context, channel, pending, index + 1)
+                        }
+                        override fun error(code: String, msg: String?, details: Any?) {
+                            // خطأ في Flutter → تخطَّ هذه الرسالة وانتقل للتالية
+                            flushNext(context, channel, pending, index + 1)
+                        }
+                        override fun notImplemented() {
+                            isFlushing = false
+                        }
+                    }
+                )
             }
         }
 
         private fun getPrefs(context: Context): SharedPreferences =
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+        private fun dedupKey(sender: String, message: String): String =
+            "$sender|${message.trim()}"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -81,42 +112,35 @@ class SmsReceiver : BroadcastReceiver() {
             val timestamp = parts.firstOrNull()?.timestampMillis
                 ?: System.currentTimeMillis()
 
-            // ── ١. احفظ في الـ queue دائماً ────────────────
-            saveToPending(context, sender, fullMessage, timestamp)
+            // ── ١. احفظ في الـ queue (مع فحص التكرار بالمحتوى) ──
+            val saved = saveToPending(context, sender, fullMessage, timestamp)
+            if (!saved) return@forEach
 
-            // ── ٢. حاول الإرسال الفوري إن كان التطبيق مفتوحاً
-            val channel = MainActivity.smsChannel
-            if (channel != null) {
-                try {
-                    channel.invokeMethod(
-                        "onSmsReceived",
-                        mapOf(
-                            "sender"    to sender,
-                            "message"   to fullMessage,
-                            "timestamp" to timestamp,
-                        )
-                    )
-                    // نجح — احذف من الـ queue
-                    removeFromPending(context, timestamp)
-                } catch (_: Exception) {
-                    // فشل — سيُعالَج عند فتح التطبيق
-                }
+            // ── ٢. إن كان التطبيق مفتوحاً → ابدأ flush فوري ──
+            if (MainActivity.smsChannel != null) {
+                flushPendingMessages(context)
             }
-            // إن كان channel == null → الرسالة محفوظة في queue ✅
+            // إن كان مغلقاً → الرسالة محفوظة وستُرسَل عند الفتح
         }
     }
 
     private fun saveToPending(
         context: Context, sender: String, message: String, timestamp: Long
-    ) {
+    ): Boolean {
         val prefs   = getPrefs(context)
         val raw     = prefs.getString(KEY_PENDING, "[]") ?: "[]"
         val pending = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
 
-        // تجنّب التكرار بنفس الـ timestamp
+        // فحص التكرار بـ (sender + message)
+        val key = dedupKey(sender, message)
         for (i in 0 until pending.length()) {
             try {
-                if (pending.getJSONObject(i).getLong("timestamp") == timestamp) return
+                val obj = pending.getJSONObject(i)
+                val existingKey = dedupKey(
+                    obj.getString("sender"),
+                    obj.getString("message")
+                )
+                if (existingKey == key) return false
             } catch (_: Exception) {}
         }
 
@@ -127,7 +151,6 @@ class SmsReceiver : BroadcastReceiver() {
         }
         pending.put(obj)
 
-        // احتفظ بآخر 50 رسالة فقط (تجنّب تراكم البيانات)
         val trimmed = if (pending.length() > 50) {
             val t = JSONArray()
             for (i in pending.length() - 50 until pending.length()) t.put(pending.get(i))
@@ -135,19 +158,6 @@ class SmsReceiver : BroadcastReceiver() {
         } else pending
 
         prefs.edit().putString(KEY_PENDING, trimmed.toString()).apply()
-    }
-
-    private fun removeFromPending(context: Context, timestamp: Long) {
-        val prefs   = getPrefs(context)
-        val raw     = prefs.getString(KEY_PENDING, "[]") ?: "[]"
-        val pending = try { JSONArray(raw) } catch (_: Exception) { return }
-        val updated = JSONArray()
-        for (i in 0 until pending.length()) {
-            try {
-                if (pending.getJSONObject(i).getLong("timestamp") != timestamp)
-                    updated.put(pending.get(i))
-            } catch (_: Exception) {}
-        }
-        prefs.edit().putString(KEY_PENDING, updated.toString()).apply()
+        return true
     }
 }

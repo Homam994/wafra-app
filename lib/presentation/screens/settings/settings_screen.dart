@@ -21,10 +21,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
   LockMethod _method = LockMethod.disabled;
 
   static const _currencies = [
-    ('SAR','🇸🇦 ريال سعودي'),('AED','🇦🇪 درهم إماراتي'),
-    ('KWD','🇰🇼 دينار كويتي'),('BHD','🇧🇭 دينار بحريني'),
-    ('QAR','🇶🇦 ريال قطري'), ('EGP','🇪🇬 جنيه مصري'),
-    ('USD','🇺🇸 دولار أمريكي'),
+    // الخليج العربي
+    ('SAR', '🇸🇦 ريال سعودي'),
+    ('AED', '🇦🇪 درهم إماراتي'),
+    ('KWD', '🇰🇼 دينار كويتي'),
+    ('BHD', '🇧🇭 دينار بحريني'),
+    ('QAR', '🇶🇦 ريال قطري'),
+    ('OMR', '🇴🇲 ريال عُماني'),
+    // المشرق العربي
+    ('JOD', '🇯🇴 دينار أردني'),
+    ('IQD', '🇮🇶 دينار عراقي'),
+    ('SYP', '🇸🇾 ليرة سورية'),
+    ('LBP', '🇱🇧 ليرة لبنانية'),
+    // شمال أفريقيا
+    ('EGP', '🇪🇬 جنيه مصري'),
+    ('LYD', '🇱🇾 دينار ليبي'),
+    ('TND', '🇹🇳 دينار تونسي'),
+    ('DZD', '🇩🇿 دينار جزائري'),
+    ('MAD', '🇲🇦 درهم مغربي'),
+    // باقي الدول العربية
+    ('SDG', '🇸🇩 جنيه سوداني'),
+    ('YER', '🇾🇪 ريال يمني'),
+    ('MRU', '🇲🇷 أوقية موريتانية'),
+    ('SOS', '🇸🇴 شلن صومالي'),
+    ('DJF', '🇩🇯 فرنك جيبوتي'),
+    ('KMF', '🇰🇲 فرنك قمري'),
+    // عالمي
+    ('USD', '🇺🇸 دولار أمريكي'),
+    ('EUR', '🇪🇺 يورو'),
+    ('GBP', '🇬🇧 جنيه إسترليني'),
   ];
 
   @override
@@ -221,7 +246,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(fontSize: 12, color: WaColors.textMuted)),
                 ])),
                 DropdownButton<String>(
-                  value: ap.currency, dropdownColor: WaColors.obsidian3,
+                  value: ap.currency, dropdownColor: Theme.of(context).colorScheme.surface,
                   underline: const SizedBox(),
                   items: _currencies.map((c) => DropdownMenuItem(
                     value: c.$1,

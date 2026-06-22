@@ -7,6 +7,7 @@ class FirestoreRepo {
 
   CollectionReference<Map<String,dynamic>> _tx(String uid)    => _db.collection('users').doc(uid).collection('transactions');
   CollectionReference<Map<String,dynamic>> _recur(String uid) => _db.collection('users').doc(uid).collection('recurring');
+  CollectionReference<Map<String,dynamic>> _bills(String uid) => _db.collection('users').doc(uid).collection('bills');
   DocumentReference<Map<String,dynamic>>   _user(String uid)  => _db.collection('users').doc(uid);
 
   // Profile
@@ -38,4 +39,16 @@ class FirestoreRepo {
   Future<void> deleteRecur(String uid, String id)  => _recur(uid).doc(id).delete();
   Future<void> updateRecurLastRun(String uid, String id, String date) =>
       _recur(uid).doc(id).update({'lastRun': date});
+
+  // Bills
+  Stream<List<BillModel>> watchBills(String uid) =>
+      _bills(uid).snapshots().map((s) {
+        final list = s.docs.map(BillModel.fromDoc).toList();
+        list.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+        return list;
+      });
+  Future<void> addBill(String uid, BillModel b)    => _bills(uid).add(b.toMap());
+  Future<void> updateBill(String uid, String id, Map<String,dynamic> d) =>
+      _bills(uid).doc(id).set(d, SetOptions(merge: true));
+  Future<void> deleteBill(String uid, String id)   => _bills(uid).doc(id).delete();
 }

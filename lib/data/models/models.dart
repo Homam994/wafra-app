@@ -119,7 +119,95 @@ class RecurModel {
   );
 }
 
-// ── User Profile ─────────────────────────────────────────────
+// ── Bill (فاتورة / اشتراك) ────────────────────────────────────
+enum BillFreq { once, weekly, monthly, yearly }
+
+class BillModel {
+  final String id, name, cat, note;
+  final double amount;
+  final BillFreq freq;
+  final String dueDate;      // تاريخ الاستحقاق القادم (yyyy-MM-dd)
+  final bool isPaid;
+  final DateTime createdAt;
+
+  const BillModel({
+    required this.id, required this.name, required this.cat,
+    required this.note, required this.amount, required this.freq,
+    required this.dueDate, required this.isPaid, required this.createdAt,
+  });
+
+  String get freqLabel => const {
+    'once'   : 'مرة واحدة',
+    'weekly' : 'أسبوعي',
+    'monthly': 'شهري',
+    'yearly' : 'سنوي',
+  }[freq.name] ?? '';
+
+  // كم يوم تبقى حتى الاستحقاق
+  int get daysUntilDue {
+    final due = DateTime.tryParse(dueDate);
+    if (due == null) return 0;
+    final today = DateTime.now();
+    return DateTime(due.year, due.month, due.day)
+        .difference(DateTime(today.year, today.month, today.day))
+        .inDays;
+  }
+
+  bool get isOverdue  => daysUntilDue < 0;
+  bool get isDueToday => daysUntilDue == 0;
+  bool get isDueSoon  => daysUntilDue > 0 && daysUntilDue <= 3;
+
+  // تاريخ الاستحقاق التالي بعد الدفع
+  String get nextDueDate {
+    final due = DateTime.tryParse(dueDate);
+    if (due == null) return dueDate;
+    switch (freq) {
+      case BillFreq.once   : return dueDate;
+      case BillFreq.weekly : return due.add(const Duration(days: 7)).toIso8601String().split('T').first;
+      case BillFreq.monthly: return DateTime(due.year, due.month + 1, due.day).toIso8601String().split('T').first;
+      case BillFreq.yearly : return DateTime(due.year + 1, due.month, due.day).toIso8601String().split('T').first;
+    }
+  }
+
+  factory BillModel.fromDoc(DocumentSnapshot doc) {
+    final d = doc.data() as Map<String, dynamic>;
+    BillFreq f;
+    switch (d['freq']) {
+      case 'weekly' : f = BillFreq.weekly;  break;
+      case 'yearly' : f = BillFreq.yearly;  break;
+      case 'once'   : f = BillFreq.once;    break;
+      default       : f = BillFreq.monthly;
+    }
+    return BillModel(
+      id       : doc.id,
+      name     : d['name']    ?? '',
+      cat      : d['cat']     ?? 'bills',
+      note     : d['note']    ?? '',
+      amount   : (d['amount'] ?? 0).toDouble(),
+      freq     : f,
+      dueDate  : d['dueDate'] ?? '',
+      isPaid   : d['isPaid']  ?? false,
+      createdAt: TxModel._ts(d['createdAt']),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+    'name'     : name, 'cat': cat, 'note': note,
+    'amount'   : amount, 'freq': freq.name,
+    'dueDate'  : dueDate, 'isPaid': isPaid,
+    'createdAt': createdAt.toIso8601String(),
+  };
+
+  BillModel copyWith({
+    String? id, String? name, String? cat, String? note,
+    double? amount, BillFreq? freq, String? dueDate, bool? isPaid,
+  }) => BillModel(
+    id: id ?? this.id, name: name ?? this.name, cat: cat ?? this.cat,
+    note: note ?? this.note, amount: amount ?? this.amount,
+    freq: freq ?? this.freq, dueDate: dueDate ?? this.dueDate,
+    isPaid: isPaid ?? this.isPaid, createdAt: createdAt,
+  );
+}
 class UserProfile {
   final String uid, name, currency, createdAt;
   final Map<String, double> budgets;

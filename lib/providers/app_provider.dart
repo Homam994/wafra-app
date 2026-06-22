@@ -20,6 +20,7 @@ class AppProvider extends ChangeNotifier {
   UserProfile?      _profile;
   List<TxModel>     _transactions = [];
   List<RecurModel>  _recurring    = [];
+  List<BillModel>   _bills        = [];
   bool              _isDark       = true;
   bool              _loading      = false;
 
@@ -28,7 +29,7 @@ class AppProvider extends ChangeNotifier {
   // ✅ تشغيل مرة واحدة فقط عند أول تحميل
   bool _recurApplied  = false;
 
-  StreamSubscription? _txSub, _recurSub;
+  StreamSubscription? _txSub, _recurSub, _billsSub;
   Function(String, bool)? onAlert;
 
   // ── Getters ────────────────────────────────────
@@ -39,6 +40,7 @@ class AppProvider extends ChangeNotifier {
   String             get userName  => _profile?.name ?? '';
   Map<String,double> get budgets   => _profile?.budgets ?? {};
   List<RecurModel>   get recurring => _recurring;
+  List<BillModel>    get bills     => _bills;
 
   // ✅ مشكلة 2: ترتيب تنازلي — أحدث أولاً
   List<TxModel> get transactions {
@@ -84,17 +86,25 @@ class AppProvider extends ChangeNotifier {
         Future.delayed(const Duration(milliseconds: 500), _applyRecurring);
       }
       _checkBudgetAlerts();
+      _checkUnusualSpendingAlert();
+      _checkWeeklySummary();
     });
 
     _recurSub?.cancel();
     _recurSub = _repo.watchRecur(uid).listen((list) {
       _recurring = list;
       notifyListeners();
-      // ✅ تطبيق المتكررات مرة واحدة فقط عند أول تحميل
       if (!_recurApplied && _transactions.isNotEmpty) {
         _recurApplied = true;
         Future.delayed(const Duration(milliseconds: 500), _applyRecurring);
       }
+    });
+
+    _billsSub?.cancel();
+    _billsSub = _repo.watchBills(uid).listen((list) {
+      _bills = list;
+      notifyListeners();
+      _checkBillsDueAlerts();
     });
 
     _loading = false; notifyListeners();
@@ -103,8 +113,9 @@ class AppProvider extends ChangeNotifier {
   Future<void> clearUser() async {
     await _txSub?.cancel();
     await _recurSub?.cancel();
-    _txSub = null; _recurSub = null;
-    _profile = null; _transactions = []; _recurring = [];
+    await _billsSub?.cancel();
+    _txSub = null; _recurSub = null; _billsSub = null;
+    _profile = null; _transactions = []; _recurring = []; _bills = [];
     _recurApplied = false; _applyingRecur = false;
     notifyListeners();
   }
@@ -158,6 +169,54 @@ class AppProvider extends ChangeNotifier {
   Future<void> deleteRecur(String id) async {
     final uid = _profile?.uid; if (uid == null) return;
     await _repo.deleteRecur(uid, id);
+  }
+
+  // ── Bills CRUD ───────────────────────────────
+  Future<void> addBill(BillModel b) async {
+    final uid = _profile?.uid; if (uid == null) return;
+    await _repo.addBill(uid, b);
+  }
+
+  Future<void> deleteBill(String id) async {
+    final uid = _profile?.uid; if (uid == null) return;
+    await _repo.deleteBill(uid, id);
+  }
+
+  // دفع الفاتورة → تسجيل معاملة + تحديث تاريخ الاستحقاق التالي
+  Future<void> payBill(BillModel b) async {
+    final uid = _profile?.uid; if (uid == null) return;
+    // سجّل معاملة مصروف
+    final tx = TxModel(
+      id: '', type: TxType.expense, cat: b.cat, sub: '',
+      amount: b.amount, note: 'فاتورة: ${b.name}',
+      date: DateTime.now().toIso8601String().split('T').first,
+      createdAt: DateTime.now(), updatedAt: null,
+    );
+    await _repo.addTx(uid, tx);
+    // حدّث تاريخ الاستحقاق أو احذف إن كانت مرة واحدة
+    if (b.freq == BillFreq.once) {
+      await _repo.deleteBill(uid, b.id);
+    } else {
+      await _repo.updateBill(uid, b.id, {
+        'dueDate': b.nextDueDate,
+        'isPaid' : false,
+      });
+    }
+  }
+
+  // ── Bills Due Alerts ─────────────────────────
+  void _checkBillsDueAlerts() {
+    for (final b in _bills) {
+      if (b.isPaid) continue;
+      if (b.isOverdue || b.isDueToday || b.isDueSoon) {
+        NotificationService.instance.showBillDue(
+          billName  : b.name,
+          amount    : b.amount,
+          currency  : currency,
+          daysLeft  : b.daysUntilDue,
+        );
+      }
+    }
   }
 
   // ── Last Used ────────────────────────────────
@@ -234,6 +293,36 @@ class AppProvider extends ChangeNotifier {
       case 'yearly' : return now.year != last.year;
       default       : return false;
     }
+  }
+
+  // ── Unusual Spending Alert ────────────────────────────
+  void _checkUnusualSpendingAlert() {
+    final result = checkUnusualSpending();
+    if (result.unusual) {
+      NotificationService.instance.showUnusualSpending(
+        todayTotal: result.todayTotal,
+        dailyAvg  : result.dailyAvg,
+        currency  : currency,
+      );
+    }
+  }
+
+  // ── Weekly Summary ─────────────────────────────────────
+  void _checkWeeklySummary() {
+    final now = DateTime.now();
+    if (now.weekday != DateTime.friday) return;
+    final weekStart = now.subtract(Duration(days: now.weekday % 7));
+    final weekTxs = _transactions.where((t) {
+      final d = DateTime.tryParse(t.date);
+      return d != null && !DateTime(d.year, d.month, d.day).isBefore(
+        DateTime(weekStart.year, weekStart.month, weekStart.day));
+    }).toList();
+    NotificationService.instance.maybeShowWeeklySummary(
+      weekExpense: totalExpense(weekTxs),
+      weekIncome : totalIncome(weekTxs),
+      currency   : currency,
+      txCount    : weekTxs.length,
+    );
   }
 
   // ── Budget Alerts ────────────────────────────
@@ -369,4 +458,150 @@ class AppProvider extends ChangeNotifier {
   }
 
   String _todayStr() => DateTime.now().toIso8601String().split('T').first;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  Analytics — دوال التحليل المتقدم
+// ══════════════════════════════════════════════════════════════
+extension AppProviderAnalytics on AppProvider {
+
+  // ── ١. متوسط الإنفاق اليومي (هذا الأسبوع vs الأسبوع الماضي) ──
+  // يُرجع (هذا الأسبوع, الأسبوع الماضي)
+  ({double thisWeek, double lastWeek}) dailyAvgComparison() {
+    final now     = DateTime.now();
+    final weekStart = now.subtract(Duration(days: now.weekday % 7));
+    final thisWeekStart = DateTime(weekStart.year, weekStart.month, weekStart.day);
+    final lastWeekStart = thisWeekStart.subtract(const Duration(days: 7));
+    final lastWeekEnd   = thisWeekStart.subtract(const Duration(days: 1));
+
+    double sumThis = 0, sumLast = 0;
+    int daysThis = 0, daysLast = 0;
+
+    for (final tx in transactions.where((t) => t.isExpense)) {
+      final d = DateTime.tryParse(tx.date);
+      if (d == null) continue;
+      final day = DateTime(d.year, d.month, d.day);
+      if (!day.isBefore(thisWeekStart) && !day.isAfter(DateTime(now.year, now.month, now.day))) {
+        sumThis += tx.amount;
+        daysThis = now.difference(thisWeekStart).inDays + 1;
+      } else if (!day.isBefore(lastWeekStart) && !day.isAfter(lastWeekEnd)) {
+        sumLast += tx.amount;
+        daysLast = 7;
+      }
+    }
+    return (
+      thisWeek: daysThis > 0 ? sumThis / daysThis : 0,
+      lastWeek: daysLast > 0 ? sumLast / daysLast : 0,
+    );
+  }
+
+  // ── ٢. أين يذهب راتبك؟ (نسبة كل تصنيف من الدخل الشهري) ──
+  List<({String catId, String label, double amount, double pct})>
+      salaryDistribution() {
+    final now    = DateTime.now();
+    final mTxs   = txForMonth(now.year, now.month);
+    final income = totalIncome(mTxs);
+    if (income == 0) return [];
+    final bycat  = expenseByCategory(mTxs);
+    final sorted = bycat.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return sorted.map((e) {
+      final cat = kExpenseCategories.firstWhere(
+        (c) => c.id == e.key,
+        orElse: () => WaCategory(id: e.key, label: e.key, emoji: '📊', subs: []),
+      );
+      return (
+        catId : e.key,
+        label : '${cat.emoji} ${cat.label}',
+        amount: e.value,
+        pct   : e.value / income * 100,
+      );
+    }).toList();
+  }
+
+  // ── ٣. أفضل وأسوأ شهر إنفاقاً خلال السنة ──
+  ({String bestMonth, double bestAmt, String worstMonth, double worstAmt})
+      bestAndWorstMonth() {
+    final now = DateTime.now();
+    final months = List.generate(12, (i) {
+      final d    = DateTime(now.year, now.month - 11 + i);
+      final txs  = txForMonth(d.year, d.month);
+      final exp  = totalExpense(txs);
+      return (month: kMonthsAr[d.month - 1], amount: exp);
+    }).where((m) => m.amount > 0).toList();
+
+    if (months.isEmpty) return (bestMonth: '—', bestAmt: 0, worstMonth: '—', worstAmt: 0);
+    final best  = months.reduce((a, b) => a.amount < b.amount ? a : b);
+    final worst = months.reduce((a, b) => a.amount > b.amount ? a : b);
+    return (
+      bestMonth : best.month,  bestAmt : best.amount,
+      worstMonth: worst.month, worstAmt: worst.amount,
+    );
+  }
+
+  // ── ٤. توقع الإنفاق بنهاية الشهر ──
+  ({double projected, double sofar, int daysLeft}) monthProjection() {
+    final now      = DateTime.now();
+    final mTxs     = txForMonth(now.year, now.month);
+    final sofar    = totalExpense(mTxs);
+    final daysDone = now.day;
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    final daysLeft = daysInMonth - daysDone;
+    final projected = daysDone > 0
+        ? (sofar / daysDone) * daysInMonth
+        : 0.0;
+    return (projected: projected, sofar: sofar, daysLeft: daysLeft);
+  }
+
+  // ── ٥. مقارنة الشهر الحالي بالسابق ──
+  ({double current, double previous, double changePct, bool isMore})
+      monthVsLastMonth() {
+    final now  = DateTime.now();
+    final prev = DateTime(now.year, now.month - 1);
+    final cur  = totalExpense(txForMonth(now.year, now.month));
+    final pre  = totalExpense(txForMonth(prev.year, prev.month));
+    final pct  = pre > 0 ? (cur - pre) / pre * 100 : 0.0;
+    return (current: cur, previous: pre, changePct: pct.abs(), isMore: cur > pre);
+  }
+
+  // ── ٦. أكثر يوم في الأسبوع إنفاقاً ──
+  List<({String day, double total})> spendingByWeekday() {
+    const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+    final sums = List<double>.filled(7, 0);
+    for (final tx in transactions.where((t) => t.isExpense)) {
+      final d = DateTime.tryParse(tx.date);
+      if (d == null) continue;
+      sums[d.weekday % 7] += tx.amount;
+    }
+    return List.generate(7, (i) => (day: days[i], total: sums[i]));
+  }
+
+  // ── ٧. فحص الإنفاق غير المعتاد اليوم ──
+  // يُرجع true إن تجاوز إنفاق اليوم ضعف المتوسط اليومي
+  ({bool unusual, double todayTotal, double dailyAvg}) checkUnusualSpending() {
+    final now     = DateTime.now();
+    final todayStr = now.toIso8601String().split('T').first;
+    final todayTxs = transactions
+        .where((t) => t.isExpense && t.date == todayStr)
+        .toList();
+    final todayTotal = todayTxs.fold<double>(0, (a, t) => a + t.amount);
+
+    // متوسط يومي على آخر 30 يوم (بدون اليوم)
+    double sum = 0;
+    int days = 0;
+    for (int i = 1; i <= 30; i++) {
+      final d   = now.subtract(Duration(days: i));
+      final str = d.toIso8601String().split('T').first;
+      final dayExp = transactions
+          .where((t) => t.isExpense && t.date == str)
+          .fold<double>(0, (a, t) => a + t.amount);
+      if (dayExp > 0) { sum += dayExp; days++; }
+    }
+    final avg = days > 0 ? sum / days : 0.0;
+    return (
+      unusual     : avg > 0 && todayTotal > avg * 2,
+      todayTotal  : todayTotal,
+      dailyAvg    : avg,
+    );
+  }
 }

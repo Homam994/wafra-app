@@ -15,10 +15,32 @@ class TransactionsScreen extends StatefulWidget {
 }
 
 class _TransactionsScreenState extends State<TransactionsScreen> {
-  final _searchCtrl = TextEditingController();
+  final _searchCtrl   = TextEditingController();
+  final _scrollCtrl   = ScrollController();
   String _filter = 'all', _search = '', _dateFrom = '', _dateTo = '';
 
-  @override void dispose() { _searchCtrl.dispose(); super.dispose(); }
+  static const _pageSize = 20;
+  int _visibleCount = _pageSize;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollCtrl.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollCtrl.position.pixels >=
+        _scrollCtrl.position.maxScrollExtent - 200) {
+      setState(() => _visibleCount += _pageSize);
+    }
+  }
 
   List<TxModel> _filtered(List<TxModel> all) {
     var l = all;
@@ -44,6 +66,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     return l;
   }
 
+  void _resetPagination() => setState(() => _visibleCount = _pageSize);
+
   @override
   Widget build(BuildContext context) {
     // ✅ ألوان تتبع الثيم
@@ -53,6 +77,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
     final ap       = context.watch<AppProvider>();
     final filtered = _filtered(ap.transactions);
+    final visible  = filtered.take(_visibleCount).toList();
+    final hasMore  = filtered.length > _visibleCount;
 
     return Scaffold(
       appBar: AppBar(
@@ -74,7 +100,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             // ✅ حقل البحث بخلفية الثيم
             TextField(
               controller: _searchCtrl,
-              onChanged : (v) => setState(() => _search = v),
+              onChanged : (v) { setState(() => _search = v); _resetPagination(); },
               decoration: InputDecoration(
                 hintText  : 'ابحث بالاسم أو المبلغ أو التصنيف...',
                 filled    : true,
@@ -130,10 +156,26 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               : WaCard(
                   padding: EdgeInsets.zero,
                   child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: filtered.length,
+                    controller     : _scrollCtrl,
+                    padding        : const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount      : visible.length + (hasMore ? 1 : 0),
                     separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (_, i) => TxListItem(tx: filtered[i]),
+                    itemBuilder    : (_, i) {
+                      if (i == visible.length) {
+                        // مؤشر تحميل في الأسفل
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: Center(
+                            child: SizedBox(width: 22, height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: WaColors.gold,
+                              )),
+                          ),
+                        );
+                      }
+                      return TxListItem(tx: visible[i]);
+                    },
                   ),
                 ).animate().fadeIn(duration: 300.ms),
         ),
@@ -145,7 +187,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   Widget _chip(String label, String val, Color bg) {
     final active = _filter == val;
     return GestureDetector(
-      onTap: () => setState(() => _filter = val),
+      onTap: () { setState(() => _filter = val); _resetPagination(); },
       child: AnimatedContainer(
         duration: 180.ms,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
