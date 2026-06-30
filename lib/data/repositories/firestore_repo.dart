@@ -27,7 +27,7 @@ class FirestoreRepo {
       _tx(uid).orderBy('date', descending: true).snapshots()
           .map((s) => s.docs.map(TxModel.fromDoc).toList());
 
-  Future<void> addTx(String uid, TxModel tx) => _tx(uid).add(tx.toMap());
+  Future<void> addTx(String uid, TxModel tx) async { await _tx(uid).add(tx.toMap()); }
   Future<void> updateTx(String uid, String id, Map<String,dynamic> d) =>
       _tx(uid).doc(id).set(d, SetOptions(merge: true));
   Future<void> deleteTx(String uid, String id) => _tx(uid).doc(id).delete();

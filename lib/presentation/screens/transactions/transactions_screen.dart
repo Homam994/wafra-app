@@ -8,6 +8,7 @@ import '../../../providers/app_provider.dart';
 import '../../widgets/common/wa_card.dart';
 import '../../widgets/transaction/tx_list_item.dart';
 import '../../widgets/transaction/add_transaction_sheet.dart';
+import '../../../generated/l10n/app_localizations.dart';
 
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({super.key});
@@ -76,13 +77,14 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     final chipBg  = isDark ? WaColors.obsidian3 : const Color(0xFFEDE9E0);
 
     final ap       = context.watch<AppProvider>();
+    final l10n = AppLocalizations.of(context);
     final filtered = _filtered(ap.transactions);
     final visible  = filtered.take(_visibleCount).toList();
     final hasMore  = filtered.length > _visibleCount;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('جميع المعاملات'),
+        title: Text(l10n.allTransactions),
         leading: IconButton(
           icon: const Icon(Icons.menu),
           onPressed: () => MenuOpener.of(context)?.onMenu()),
@@ -102,7 +104,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               controller: _searchCtrl,
               onChanged : (v) { setState(() => _search = v); _resetPagination(); },
               decoration: InputDecoration(
-                hintText  : 'ابحث بالاسم أو المبلغ أو التصنيف...',
+                hintText  : l10n.search,
                 filled    : true,
                 fillColor : fieldBg,
                 prefixIcon: const Icon(Icons.search,
@@ -112,11 +114,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             const SizedBox(height: 8),
             // ✅ حقلا التاريخ بخلفية الثيم
             Row(children: [
-              _dateField('من', _dateFrom,
-                  (v) => setState(() => _dateFrom = v), fieldBg),
+              _dateField(
+                  l10n.date + (ap.locale.languageCode == 'ar' ? ' من' : ' from'),
+                  _dateFrom, (v) => setState(() => _dateFrom = v), fieldBg),
               const SizedBox(width: 8),
-              _dateField('إلى', _dateTo,
-                  (v) => setState(() => _dateTo = v), fieldBg),
+              _dateField(
+                  l10n.date + (ap.locale.languageCode == 'ar' ? ' إلى' : ' to'),
+                  _dateTo, (v) => setState(() => _dateTo = v), fieldBg),
               if (_dateFrom.isNotEmpty || _dateTo.isNotEmpty) ...[
                 const SizedBox(width: 6),
                 IconButton(
@@ -130,13 +134,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             ]),
             const SizedBox(height: 8),
             Row(children: [
-              _chip('الكل',    'all',     chipBg),
+              _chip(l10n.all,     'all',     chipBg),
               const SizedBox(width: 6),
-              _chip('مداخيل', 'income',  chipBg),
+              _chip(l10n.incomes, 'income',  chipBg),
               const SizedBox(width: 6),
-              _chip('مصاريف', 'expense', chipBg),
+              _chip(l10n.expenses, 'expense', chipBg),
               const Spacer(),
-              Text('${filtered.length} معاملة',
+              Text(l10n.transactionCount(filtered.length),
                 style: const TextStyle(
                     fontSize: 11, color: WaColors.textMuted)),
             ]),
@@ -145,11 +149,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         const SizedBox(height: 8),
         Expanded(
           child: filtered.isEmpty
-              ? const Center(child: Column(
+              ? Center(child: Column(
                   mainAxisSize: MainAxisSize.min, children: [
                   Text('🔍', style: TextStyle(fontSize: 40)),
                   SizedBox(height: 8),
-                  Text('لا توجد نتائج',
+                  Text(l10n.noResults,
                       style: TextStyle(
                           color: WaColors.textMuted, fontSize: 14)),
                 ]))
@@ -208,9 +212,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       ValueChanged<String> onChange, Color bg) =>
     Expanded(child: GestureDetector(
       onTap: () async {
+        final locale = context.read<AppProvider>().locale;
         final p = await showDatePicker(
           context    : context,
-          locale     : const Locale('ar', 'SA'),
+          locale     : locale,
           initialDate: val.isNotEmpty
               ? (DateTime.tryParse(val) ?? DateTime.now()) : DateTime.now(),
           firstDate: DateTime(2000), lastDate: DateTime(2100),

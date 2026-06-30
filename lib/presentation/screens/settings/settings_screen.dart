@@ -11,6 +11,7 @@ import '../../../providers/app_provider.dart';
 import '../../widgets/common/wa_card.dart';
 import '../auth/login_screen.dart';
 import '../auth/lock_screen.dart';
+import '../../../generated/l10n/app_localizations.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -21,35 +22,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
   LockMethod _method = LockMethod.disabled;
 
   static const _currencies = [
-    // الخليج العربي
-    ('SAR', '🇸🇦 ريال سعودي'),
-    ('AED', '🇦🇪 درهم إماراتي'),
-    ('KWD', '🇰🇼 دينار كويتي'),
-    ('BHD', '🇧🇭 دينار بحريني'),
-    ('QAR', '🇶🇦 ريال قطري'),
-    ('OMR', '🇴🇲 ريال عُماني'),
-    // المشرق العربي
-    ('JOD', '🇯🇴 دينار أردني'),
-    ('IQD', '🇮🇶 دينار عراقي'),
-    ('SYP', '🇸🇾 ليرة سورية'),
-    ('LBP', '🇱🇧 ليرة لبنانية'),
-    // شمال أفريقيا
-    ('EGP', '🇪🇬 جنيه مصري'),
-    ('LYD', '🇱🇾 دينار ليبي'),
-    ('TND', '🇹🇳 دينار تونسي'),
-    ('DZD', '🇩🇿 دينار جزائري'),
-    ('MAD', '🇲🇦 درهم مغربي'),
-    // باقي الدول العربية
-    ('SDG', '🇸🇩 جنيه سوداني'),
-    ('YER', '🇾🇪 ريال يمني'),
-    ('MRU', '🇲🇷 أوقية موريتانية'),
-    ('SOS', '🇸🇴 شلن صومالي'),
-    ('DJF', '🇩🇯 فرنك جيبوتي'),
-    ('KMF', '🇰🇲 فرنك قمري'),
-    // عالمي
-    ('USD', '🇺🇸 دولار أمريكي'),
-    ('EUR', '🇪🇺 يورو'),
-    ('GBP', '🇬🇧 جنيه إسترليني'),
+    ('SAR', '🇸🇦 ريال سعودي', '🇸🇦 Saudi Riyal'),
+    ('AED', '🇦🇪 درهم إماراتي', '🇦🇪 UAE Dirham'),
+    ('KWD', '🇰🇼 دينار كويتي', '🇰🇼 Kuwaiti Dinar'),
+    ('BHD', '🇧🇭 دينار بحريني', '🇧🇭 Bahraini Dinar'),
+    ('QAR', '🇶🇦 ريال قطري', '🇶🇦 Qatari Riyal'),
+    ('OMR', '🇴🇲 ريال عُماني', '🇴🇲 Omani Rial'),
+    ('JOD', '🇯🇴 دينار أردني', '🇯🇴 Jordanian Dinar'),
+    ('IQD', '🇮🇶 دينار عراقي', '🇮🇶 Iraqi Dinar'),
+    ('SYP', '🇸🇾 ليرة سورية', '🇸🇾 Syrian Pound'),
+    ('LBP', '🇱🇧 ليرة لبنانية', '🇱🇧 Lebanese Pound'),
+    ('EGP', '🇪🇬 جنيه مصري', '🇪🇬 Egyptian Pound'),
+    ('LYD', '🇱🇾 دينار ليبي', '🇱🇾 Libyan Dinar'),
+    ('TND', '🇹🇳 دينار تونسي', '🇹🇳 Tunisian Dinar'),
+    ('DZD', '🇩🇿 دينار جزائري', '🇩🇿 Algerian Dinar'),
+    ('MAD', '🇲🇦 درهم مغربي', '🇲🇦 Moroccan Dirham'),
+    ('SDG', '🇸🇩 جنيه سوداني', '🇸🇩 Sudanese Pound'),
+    ('YER', '🇾🇪 ريال يمني', '🇾🇪 Yemeni Rial'),
+    ('MRU', '🇲🇷 أوقية موريتانية', '🇲🇷 Mauritanian Ouguiya'),
+    ('SOS', '🇸🇴 شلن صومالي', '🇸🇴 Somali Shilling'),
+    ('DJF', '🇩🇯 فرنك جيبوتي', '🇩🇯 Djiboutian Franc'),
+    ('KMF', '🇰🇲 فرنك قمري', '🇰🇲 Comorian Franc'),
+    ('USD', '🇺🇸 دولار أمريكي', '🇺🇸 US Dollar'),
+    ('EUR', '🇪🇺 يورو', '🇪🇺 Euro'),
+    ('GBP', '🇬🇧 جنيه إسترليني', '🇬🇧 British Pound'),
   ];
 
   @override
@@ -59,76 +55,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final p = await SharedPreferences.getInstance();
     final m = await context.read<BiometricService>().getMethod();
     setState(() {
-      // ✅ مصدر واحد للحقيقة: BiometricService هو المرجع
-      _method        = m;
-      _bioEnabled    = (m == LockMethod.enabled);
-      _lockBg        = p.getBool('lockBg') ?? false;
-      _notifEnabled  = NotificationService.instance.isEnabled;
+      _method       = m;
+      _bioEnabled   = (m == LockMethod.enabled);
+      _lockBg       = p.getBool('lockBg') ?? false;
+      _notifEnabled = NotificationService.instance.isEnabled;
     });
   }
 
   Future<void> _setBio(bool v) async {
-    final bio = context.read<BiometricService>();
+    final l10n = AppLocalizations.of(context);
+    final bio  = context.read<BiometricService>();
     if (v) {
-      // ── خطوة 1: تحقق من دعم الجهاز ───────────────
       final avail = await bio.isAvailable();
-      if (!avail) {
-        if (mounted) _showLockHint();
-        return;
-      }
-
-      // ── خطوة 2: اطلب المصادقة مع تفاصيل الخطأ ───
+      if (!avail) { if (mounted) _showLockHint(); return; }
       final result = await bio.authenticateWithDetails();
-
       if (!result.ok) {
         if (!mounted) return;
-        // أظهر سبب الفشل للمستخدم
         final reason = switch (result.errorCode) {
-          'notEnrolled'    => 'لا توجد بصمة أو PIN مُسجَّل على الجهاز',
-          'notAvailable'   => 'المصادقة غير متاحة على هذا الجهاز',
-          'passcodeNotSet' => 'يجب إعداد قفل الشاشة أولاً في إعدادات الجهاز',
-          'lockedOut'      => 'تم تعطيل المصادقة مؤقتاً بسبب محاولات فاشلة',
-          'permanentlyLockedOut' => 'تم تعطيل المصادقة. أعد تشغيل الجهاز',
-          null             => 'تم الإلغاء',
-          _                => 'فشل التحقق (${result.errorCode})',
+          'notEnrolled'          => l10n.bioNotEnrolled,
+          'notAvailable'         => l10n.bioNotAvailable,
+          'passcodeNotSet'       => l10n.bioPasscodeNotSet,
+          'lockedOut'            => l10n.bioLockedOut,
+          'permanentlyLockedOut' => l10n.bioPermanentlyLockedOut,
+          null                   => l10n.bioCancelled,
+          _                      => l10n.bioFailed(result.errorCode ?? ''),
         };
         _snack('❌ $reason');
         return;
       }
-
-      // ── خطوة 3: احفظ الإعداد وتحقق من النجاح ────
       final saved = await bio.enable();
       if (!mounted) return;
-
-      if (!saved) {
-        _snack('❌ فشل حفظ الإعداد — تأكد أن الجهاز يدعم التخزين المشفّر');
-        return;
-      }
-
+      if (!saved) { _snack(l10n.lockSaveFailed); return; }
       setState(() { _bioEnabled = true; _method = LockMethod.enabled; });
-      _snack('🔒 تم تفعيل القفل عند الفتح');
-
+      _snack(l10n.lockEnabled);
     } else {
       await bio.disable();
       if (mounted) setState(() { _bioEnabled = false; _method = LockMethod.disabled; });
-      _snack('🔓 تم إيقاف القفل');
+      _snack(AppLocalizations.of(context).lockDisabled);
     }
   }
 
   void _showLockHint() {
+    final l10n = AppLocalizations.of(context);
     showDialog(context: context, builder: (_) => AlertDialog(
-      title  : const Text('قفل الشاشة غير مفعّل'),
-      content: const Text(
-        'لتفعيل هذه الميزة، يجب إعداد قفل الشاشة على جهازك أولاً:\n\n'
-        '1. افتح إعدادات الجهاز\n'
-        '2. اذهب إلى "الأمان" أو "قفل الشاشة"\n'
-        '3. أعدّ بصمة أو رمز PIN أو نمط\n'
-        '4. عد وفعّل القفل هنا',
-        style: TextStyle(height: 1.6)),
+      title  : Text(l10n.lockNotEnabled),
+      content: Text(l10n.lockNotEnabledBody, style: const TextStyle(height: 1.6)),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('حسناً')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.ok)),
       ],
     ));
   }
@@ -144,19 +117,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await p.remove('lockBg');
     await context.read<BiometricService>().clearAll();
     setState(() { _method = LockMethod.disabled; _bioEnabled = false; _lockBg = false; });
-    _snack('🔑 تم إعادة تعيين القفل بالكامل');
+    _snack(AppLocalizations.of(context).lockResetDone);
   }
 
   Future<void> _logout() async {
+    final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(context: context,
       builder: (_) => AlertDialog(
-        title  : const Text('تسجيل الخروج'),
-        content: const Text('هل تريد الخروج؟'),
+        title  : Text(l10n.logoutConfirmTitle),
+        content: Text(l10n.logoutConfirmBody),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.cancel)),
           TextButton(onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: WaColors.danger),
-            child: const Text('خروج')),
+            child: Text(l10n.logout)),
         ],
       ),
     );
@@ -172,77 +146,96 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final ap = context.watch<AppProvider>();
+    final ap   = context.watch<AppProvider>();
+    final l10n = AppLocalizations.of(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('الإعدادات'),
+        title: Text(l10n.settings),
         leading: Builder(builder: (ctx) => IconButton(
           icon: const Icon(Icons.menu), onPressed: () => MenuOpener.of(context)?.onMenu())),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _section('🔒 الأمان والخصوصية'),
+          _section(l10n.securityAndPrivacy),
           WaCard(child: Column(children: [
-            _switchRow('التحقق الحيوي عند الفتح', 'بصمة / وجه / PIN الجهاز',
-                _bioEnabled, _setBio),
+            _switchRow(l10n.biometricLock, l10n.biometricSub, _bioEnabled, _setBio),
             if (_bioEnabled) ...[
               const Divider(height: 1),
-              _switchRow('القفل عند الخروج للخلفية',
-                  'يقفل التلقائياً عند تصغير التطبيق', _lockBg, _setLockBg),
+              _switchRow(l10n.lockOnBackground, l10n.lockOnBackgroundSub, _lockBg, _setLockBg),
               const Divider(height: 1),
-              _actionRow('إعادة تعيين طريقة القفل',
-                  'الطريقة الحالية: ${_methodLabel()}',
+              _actionRow(l10n.resetLockMethod,
+                  l10n.currentMethod(_methodLabel(l10n)),
                   Icons.refresh, _resetBio),
             ],
           ])).animate().fadeIn(duration: 300.ms),
 
           const SizedBox(height: 14),
-          _section('🔔 الإشعارات'),
+          _section(l10n.notifications),
           WaCard(child: Column(children: [
             _switchRow(
-              'إشعارات الميزانية',
-              'تنبيه عند اقتراب أو تجاوز حد الإنفاق',
+              l10n.budgetNotifications,
+              l10n.budgetNotificationsSub,
               _notifEnabled,
               (v) async {
                 await NotificationService.instance.setEnabled(v);
                 setState(() => _notifEnabled = v);
-                _snack(v ? '🔔 تم تفعيل الإشعارات' : '🔕 تم إيقاف الإشعارات');
+                _snack(v ? l10n.notifEnabled : l10n.notifDisabled);
               },
             ),
             const Divider(height: 1),
             _actionRow(
-              'اختبار إشعار',
-              'أرسل إشعاراً تجريبياً الآن',
+              l10n.testNotification, l10n.testNotificationSub,
               Icons.notifications_active_outlined,
               () async {
-                if (!_notifEnabled) {
-                  _snack('⚠️ الإشعارات معطلة — فعّلها أولاً');
-                  return;
-                }
+                if (!_notifEnabled) { _snack(l10n.notifDisabledWarning); return; }
                 await NotificationService.instance.showBudgetAlert(
                   categoryLabel: 'المطاعم',
                   spent: 950, limit: 1000,
-                  currency: context.read<AppProvider>().currency,
+                  currency: ap.currency,
                   isOver: false,
                 );
-                _snack('📨 تم إرسال إشعار تجريبي');
+                _snack(l10n.testNotifSent);
               },
             ),
           ])).animate(delay: 50.ms).fadeIn(duration: 300.ms),
 
           const SizedBox(height: 14),
-          _section('🎨 العرض والمظهر'),
+          _section(l10n.displayAndTheme),
           WaCard(child: Column(children: [
-            _switchRow('الوضع الليلي', 'خلفية داكنة تريح العين',
-                ap.isDark, (_) => ap.toggleTheme()),
+            _switchRow(l10n.darkMode, l10n.darkModeSub, ap.isDark, (_) => ap.toggleTheme()),
             const Divider(height: 1),
+            // ── Language picker ──
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 10),
               child: Row(children: [
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('العملة', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                  Text('الحالية: ${ap.currency}',
+                  Text(l10n.language, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                ])),
+                DropdownButton<String>(
+                  value: ap.locale.languageCode,
+                  dropdownColor: Theme.of(context).colorScheme.surface,
+                  underline: const SizedBox(),
+                  items: [
+                    DropdownMenuItem(value: 'ar', child: Text(l10n.languageArabic, style: const TextStyle(fontSize: 13))),
+                    DropdownMenuItem(value: 'en', child: Text(l10n.languageEnglish, style: const TextStyle(fontSize: 13))),
+                  ],
+                  onChanged: (v) {
+                    if (v == null) return;
+                    ap.setLocale(v == 'en' ? const Locale('en','US') : const Locale('ar','SA'));
+                  },
+                ),
+              ]),
+            ),
+            const Divider(height: 1),
+            // ── Currency picker ──
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Row(children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(l10n.currency, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                  Text(l10n.currentCurrency(ap.currency),
                     style: TextStyle(fontSize: 12, color: WaColors.textMuted)),
                 ])),
                 DropdownButton<String>(
@@ -250,7 +243,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   underline: const SizedBox(),
                   items: _currencies.map((c) => DropdownMenuItem(
                     value: c.$1,
-                    child: Text(c.$2, style: const TextStyle(fontSize: 13)))).toList(),
+                    child: Text(ap.locale.languageCode == 'en' ? c.$3 : c.$2,
+                      style: const TextStyle(fontSize: 13)))).toList(),
                   onChanged: (v) { if (v != null) ap.updateCurrency(v); },
                 ),
               ]),
@@ -258,31 +252,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ])).animate(delay: 50.ms).fadeIn(duration: 300.ms),
 
           const SizedBox(height: 14),
-          _section('💾 البيانات'),
+          _section(l10n.data),
           WaCard(child: Column(children: [
-            _actionRow('مزامنة البيانات', 'Firebase Firestore — مزامنة فورية',
+            _actionRow(l10n.syncData, l10n.syncDataSub,
                 Icons.cloud_done_outlined, null, WaColors.success),
             const Divider(height: 1),
-            _actionRow('تصدير CSV', 'يفتح في Excel أو Google Sheets',
+            _actionRow(l10n.exportCSV, l10n.exportCSVSub,
                 Icons.download_outlined, ap.exportCSV),
           ])).animate(delay: 100.ms).fadeIn(duration: 300.ms),
 
           const SizedBox(height: 14),
-          _section('ℹ️ عن التطبيق'),
+          _section(l10n.aboutApp),
           WaCard(child: Column(children: [
-            _infoRow('الإصدار', '1.0.0'),
+            _infoRow(l10n.version, '1.0.0'),
             const Divider(height: 1),
-            _infoRow('التطبيق', 'وفرة — إدارة مالية ذكية'),
+            _infoRow(l10n.appName, l10n.appFullName),
             const Divider(height: 1),
-            _infoRow('قاعدة البيانات', 'Firebase Firestore'),
+            _infoRow(l10n.database, 'Firebase Firestore'),
           ])).animate(delay: 150.ms).fadeIn(duration: 300.ms),
 
           const SizedBox(height: 20),
           OutlinedButton.icon(
             onPressed: _logout,
             icon : const Icon(Icons.logout, color: WaColors.danger),
-            label: const Text('تسجيل الخروج',
-                style: TextStyle(color: WaColors.danger, fontWeight: FontWeight.w600)),
+            label: Text(l10n.logout,
+                style: const TextStyle(color: WaColors.danger, fontWeight: FontWeight.w600)),
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: WaColors.danger),
               padding: const EdgeInsets.symmetric(vertical: 13),
@@ -331,7 +325,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ],
     ));
 
-  String _methodLabel() => const {
-    'enabled': 'مفعّل ✅', 'disabled': 'موقوف',
-  }[_method.name] ?? '—';
+  String _methodLabel(AppLocalizations l10n) => _method == LockMethod.enabled
+      ? l10n.lockMethodEnabled : l10n.lockMethodDisabled;
 }

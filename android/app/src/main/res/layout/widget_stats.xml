@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_stats_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="horizontal"
@@ -7,7 +8,6 @@
     android:padding="14dp"
     android:gravity="center_vertical">
 
-    <!-- الدخل -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
@@ -15,6 +15,7 @@
         android:orientation="vertical"
         android:gravity="center_vertical">
         <TextView
+            android:id="@+id/widget_income_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="↑ الدخل"
@@ -31,7 +32,6 @@
             android:layout_marginTop="2dp"/>
     </LinearLayout>
 
-    <!-- فاصل -->
     <LinearLayout
         android:layout_width="1dp"
         android:layout_height="match_parent"
@@ -39,7 +39,6 @@
         android:layout_marginTop="8dp"
         android:layout_marginBottom="8dp"/>
 
-    <!-- المصاريف -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
@@ -48,6 +47,7 @@
         android:gravity="center_vertical"
         android:layout_marginStart="12dp">
         <TextView
+            android:id="@+id/widget_expense_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="↓ المصاريف"
@@ -64,7 +64,6 @@
             android:layout_marginTop="2dp"/>
     </LinearLayout>
 
-    <!-- فاصل -->
     <LinearLayout
         android:layout_width="1dp"
         android:layout_height="match_parent"
@@ -72,7 +71,6 @@
         android:layout_marginTop="8dp"
         android:layout_marginBottom="8dp"/>
 
-    <!-- الصافي -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
@@ -84,7 +82,7 @@
             android:id="@+id/widget_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="⬡ وفرة"
+            android:text="$ وفرة"
             android:textColor="#C9A84C"
             android:textSize="10sp"
             android:textStyle="bold"/>

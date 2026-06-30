@@ -10,6 +10,7 @@ import '../../../providers/app_provider.dart';
 import '../../widgets/common/wa_card.dart';
 import '../../widgets/transaction/tx_list_item.dart';
 import '../../widgets/transaction/add_transaction_sheet.dart';
+import '../../../generated/l10n/app_localizations.dart';
 
 class ExpensesScreen extends StatelessWidget {
   const ExpensesScreen({super.key});
@@ -17,13 +18,14 @@ class ExpensesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ap   = context.watch<AppProvider>();
+    final l10n = AppLocalizations.of(context);
     final txs  = ap.transactions.where((t) => t.isExpense).toList();
     final bycat= ap.expenseByCategory(txs);
     final total= ap.totalExpense(txs);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('المصاريف'),
+        title: Text(l10n.expenses),
         leading: Builder(
           builder: (ctx) => IconButton(
             icon: const Icon(Icons.menu),
@@ -65,7 +67,7 @@ class ExpensesScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('سجل المصاريف',
+                    Text(l10n.expenseHistory,
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                     Text('${txs.length} معاملة',
                       style: TextStyle(fontSize: 12, color: WaColors.textMuted)),
@@ -73,13 +75,13 @@ class ExpensesScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 if (txs.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
                     child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      Text('📊', style: TextStyle(fontSize: 36)),
-                      SizedBox(height: 8),
-                      Text('لا توجد مصاريف مسجلة',
-                          style: TextStyle(color: WaColors.textMuted, fontSize: 13)),
+                      const Text('📊', style: TextStyle(fontSize: 36)),
+                      const SizedBox(height: 8),
+                      Text(l10n.noExpenses,
+                          style: const TextStyle(color: WaColors.textMuted, fontSize: 13)),
                     ])),
                   )
                 else

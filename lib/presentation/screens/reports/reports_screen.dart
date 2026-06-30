@@ -7,6 +7,7 @@ import '../../../core/constants/categories.dart';
 import '../../../providers/app_provider.dart';
 import '../../widgets/common/wa_card.dart';
 import '../../widgets/transaction/tx_list_item.dart';
+import '../../../generated/l10n/app_localizations.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -37,6 +38,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final progBg   = isDark ? WaColors.obsidian3 : const Color(0xFFE0DBD0);
 
     final ap  = context.watch<AppProvider>();
+    final l10n = AppLocalizations.of(context);
     final txs = ap.txForMonth(_year, _month);
     final inc = ap.totalIncome(txs);
     final exp = ap.totalExpense(txs);
@@ -46,7 +48,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('التقارير الشهرية'),
+        title: Text(l10n.monthlyReports),
         leading: IconButton(
           icon: const Icon(Icons.menu),
           onPressed: () => MenuOpener.of(context)?.onMenu()),
@@ -62,7 +64,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               // ✅ RTL: زر اليمين = شهر تالٍ، زر اليسار = شهر سابق
               _navBtn(Icons.arrow_back_ios_new, () => _change(1),
                   chipBg, chipFg),
-              Text('${kMonthsAr[_month-1]} $_year',
+              Text('${AppLocalizations.of(context).months[_month-1]} $_year',
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               _navBtn(Icons.arrow_forward_ios, () => _change(-1),
                   chipBg, chipFg),
@@ -72,16 +74,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
           // ── Stats ────────────────────────────────
           Row(children: [
-            Expanded(child: _stat('المداخيل', ap.fmt(inc), WaColors.success)),
+            Expanded(child: _stat(l10n.incomes, ap.fmt(inc), WaColors.success)),
             const SizedBox(width: 10),
-            Expanded(child: _stat('المصاريف', ap.fmt(exp), WaColors.danger)),
+            Expanded(child: _stat(l10n.expenses, ap.fmt(exp), WaColors.danger)),
           ]),
           const SizedBox(height: 10),
           Row(children: [
-            Expanded(child: _stat('الصافي', ap.fmt(net),
+            Expanded(child: _stat(ap.locale.languageCode == 'ar' ? 'الصافي' : 'Net', ap.fmt(net),
                 net >= 0 ? WaColors.success : WaColors.danger)),
             const SizedBox(width: 10),
-            Expanded(child: _stat('المعاملات', '${txs.length}', WaColors.gold)),
+            Expanded(child: _stat(l10n.transactions, '${txs.length}', WaColors.gold)),
           ]),
           const SizedBox(height: 14),
 
@@ -89,10 +91,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
           if (expBycat.isNotEmpty) ...[
             WaCard(child: Column(
               crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('تفصيل المصاريف',
+              Text(l10n.expenseBreakdown,
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
               const SizedBox(height: 12),
-              ..._breakdown(expBycat, exp, ap, 'expense', progBg),
+              ..._breakdown(expBycat, exp, ap, 'expense', progBg, ap.locale.languageCode),
             ])).animate(delay: 100.ms).fadeIn(),
             const SizedBox(height: 12),
           ],
@@ -101,10 +103,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
           if (incBycat.isNotEmpty) ...[
             WaCard(child: Column(
               crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('تفصيل المداخيل',
+              Text(l10n.incomeBreakdown,
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
               const SizedBox(height: 12),
-              ..._breakdown(incBycat, inc, ap, 'income', progBg),
+              ..._breakdown(incBycat, inc, ap, 'income', progBg, ap.locale.languageCode),
             ])).animate(delay: 150.ms).fadeIn(),
             const SizedBox(height: 12),
           ],
@@ -115,15 +117,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                child: Text('معاملات الشهر — ${txs.length}',
+                child: Text(AppLocalizations.of(context).monthTransactions(txs.length),
                   style: const TextStyle(
                       fontSize: 14, fontWeight: FontWeight.w600)),
               ),
               if (txs.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(child: Text('لا توجد معاملات هذا الشهر',
-                    style: TextStyle(color: WaColors.textMuted))),
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Center(child: Text(l10n.noTransactionsThisMonth,
+                    style: const TextStyle(color: WaColors.textMuted))),
                 )
               else
                 ListView.separated(
@@ -144,7 +146,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   // ✅ progBg من الثيم
   List<Widget> _breakdown(Map<String, double> bycat, double total,
-      AppProvider ap, String type, Color progBg) {
+      AppProvider ap, String type, Color progBg, String lang) {
     final sorted = bycat.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     return sorted.map((e) {
@@ -157,7 +159,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           Row(children: [
             Text(cat?.emoji ?? '•', style: const TextStyle(fontSize: 18)),
             const SizedBox(width: 8),
-            Expanded(child: Text(cat?.label ?? e.key,
+            Expanded(child: Text(cat?.localizedLabel(lang) ?? e.key,
               style: const TextStyle(
                   fontSize: 13, fontWeight: FontWeight.w500))),
             Text(ap.fmt(e.value),

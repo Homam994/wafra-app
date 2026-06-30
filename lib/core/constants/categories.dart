@@ -2,34 +2,136 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
 class WaCategory {
-  final String id, label, emoji;
+  final String id, label, labelEn, emoji;
   final List<WaSubCategory> subs;
-  const WaCategory({required this.id, required this.label, required this.emoji, required this.subs});
+  const WaCategory({
+    required this.id,
+    required this.label,
+    required this.labelEn,
+    required this.emoji,
+    required this.subs,
+  });
   Color get color => WaColors.catColor(id);
+
+  /// Returns the label based on locale language code
+  String localizedLabel(String langCode) => langCode == 'en' ? labelEn : label;
 }
 
 class WaSubCategory {
-  final String emoji, label;
-  const WaSubCategory(this.emoji, this.label);
+  final String emoji, label, labelEn;
+  const WaSubCategory(this.emoji, this.label, [this.labelEn = '']);
+
+  String localizedLabel(String langCode) =>
+      langCode == 'en' && labelEn.isNotEmpty ? labelEn : label;
 }
 
 const kExpenseCategories = <WaCategory>[
-  WaCategory(id:'food',          label:'طعام',      emoji:'🍽️', subs:[WaSubCategory('🍽️','مطاعم'),WaSubCategory('🛒','بقالة'),WaSubCategory('☕','مقاهي'),WaSubCategory('🥐','مخابز'),WaSubCategory('🛵','توصيل'),WaSubCategory('🍱','أخرى')]),
-  WaCategory(id:'transport',     label:'مواصلات',   emoji:'🚗', subs:[WaSubCategory('⛽','وقود'),WaSubCategory('🚕','تاكسي'),WaSubCategory('🔧','صيانة'),WaSubCategory('📋','تأمين'),WaSubCategory('🚌','نقل عام'),WaSubCategory('✈️','سفر')]),
-  WaCategory(id:'health',        label:'صحة',       emoji:'❤️', subs:[WaSubCategory('💊','أدوية'),WaSubCategory('🏥','طبيب'),WaSubCategory('🏋️','رياضة'),WaSubCategory('💉','صيدلية'),WaSubCategory('🪥','عناية'),WaSubCategory('🦷','أسنان')]),
-  WaCategory(id:'bills',         label:'فواتير',    emoji:'🏠', subs:[WaSubCategory('🏠','إيجار'),WaSubCategory('💡','كهرباء/ماء'),WaSubCategory('📶','إنترنت'),WaSubCategory('📱','هاتف'),WaSubCategory('🔨','صيانة منزل'),WaSubCategory('🔐','تأمين منزل')]),
-  WaCategory(id:'entertainment', label:'ترفيه',     emoji:'🎬', subs:[WaSubCategory('🎬','سينما'),WaSubCategory('📺','اشتراكات'),WaSubCategory('🎮','ألعاب'),WaSubCategory('🏖️','سياحة'),WaSubCategory('📚','كتب'),WaSubCategory('⚽','رياضة')]),
-  WaCategory(id:'shopping',      label:'تسوق',      emoji:'🛍️', subs:[WaSubCategory('👔','ملابس'),WaSubCategory('👟','أحذية'),WaSubCategory('💻','إلكترونيات'),WaSubCategory('🪴','أدوات منزل'),WaSubCategory('🎁','هدايا'),WaSubCategory('🛍️','أخرى')]),
-  WaCategory(id:'education',     label:'تعليم',     emoji:'🎓', subs:[WaSubCategory('🎓','دورات'),WaSubCategory('🏫','مدرسة/جامعة'),WaSubCategory('📖','كتب دراسية'),WaSubCategory('💾','برامج'),WaSubCategory('✏️','قرطاسية'),WaSubCategory('🏅','امتحانات')]),
-  WaCategory(id:'family',        label:'عائلة',     emoji:'👨‍👩‍👧', subs:[WaSubCategory('🧒','مصروف أطفال'),WaSubCategory('🎂','مناسبات'),WaSubCategory('🍼','رعاية أطفال'),WaSubCategory('🧓','رعاية أهل'),WaSubCategory('🎀','هدايا عائلية'),WaSubCategory('🏡','نفقات منزلية')]),
+  WaCategory(id:'food',          label:'طعام',      labelEn:'Food',           emoji:'🍽️', subs:[
+    WaSubCategory('🍽️','مطاعم',       'Restaurants'),
+    WaSubCategory('🛒','بقالة',         'Grocery'),
+    WaSubCategory('☕','مقاهي',         'Cafes'),
+    WaSubCategory('🥐','مخابز',         'Bakeries'),
+    WaSubCategory('🛵','توصيل',         'Delivery'),
+    WaSubCategory('🍱','أخرى',          'Other'),
+  ]),
+  WaCategory(id:'transport',     label:'مواصلات',   labelEn:'Transport',      emoji:'🚗', subs:[
+    WaSubCategory('⛽','وقود',           'Fuel'),
+    WaSubCategory('🚕','تاكسي',         'Taxi'),
+    WaSubCategory('🔧','صيانة',         'Maintenance'),
+    WaSubCategory('📋','تأمين',         'Insurance'),
+    WaSubCategory('🚌','نقل عام',       'Public Transport'),
+    WaSubCategory('✈️','سفر',           'Travel'),
+  ]),
+  WaCategory(id:'health',        label:'صحة',       labelEn:'Health',         emoji:'❤️', subs:[
+    WaSubCategory('💊','أدوية',         'Medicines'),
+    WaSubCategory('🏥','طبيب',          'Doctor'),
+    WaSubCategory('🏋️','رياضة',        'Gym'),
+    WaSubCategory('💉','صيدلية',        'Pharmacy'),
+    WaSubCategory('🪥','عناية',         'Personal Care'),
+    WaSubCategory('🦷','أسنان',         'Dental'),
+  ]),
+  WaCategory(id:'bills',         label:'فواتير',    labelEn:'Bills',          emoji:'🏠', subs:[
+    WaSubCategory('🏠','إيجار',         'Rent'),
+    WaSubCategory('💡','كهرباء/ماء',    'Electricity/Water'),
+    WaSubCategory('📶','إنترنت',        'Internet'),
+    WaSubCategory('📱','هاتف',          'Phone'),
+    WaSubCategory('🔨','صيانة منزل',   'Home Maintenance'),
+    WaSubCategory('🔐','تأمين منزل',   'Home Insurance'),
+  ]),
+  WaCategory(id:'entertainment', label:'ترفيه',     labelEn:'Entertainment',  emoji:'🎬', subs:[
+    WaSubCategory('🎬','سينما',         'Cinema'),
+    WaSubCategory('📺','اشتراكات',      'Subscriptions'),
+    WaSubCategory('🎮','ألعاب',         'Games'),
+    WaSubCategory('🏖️','سياحة',        'Tourism'),
+    WaSubCategory('📚','كتب',           'Books'),
+    WaSubCategory('⚽','رياضة',         'Sports'),
+  ]),
+  WaCategory(id:'shopping',      label:'تسوق',      labelEn:'Shopping',       emoji:'🛍️', subs:[
+    WaSubCategory('👔','ملابس',         'Clothes'),
+    WaSubCategory('👟','أحذية',         'Shoes'),
+    WaSubCategory('💻','إلكترونيات',    'Electronics'),
+    WaSubCategory('🪴','أدوات منزل',   'Home Tools'),
+    WaSubCategory('🎁','هدايا',         'Gifts'),
+    WaSubCategory('🛍️','أخرى',         'Other'),
+  ]),
+  WaCategory(id:'education',     label:'تعليم',     labelEn:'Education',      emoji:'🎓', subs:[
+    WaSubCategory('🎓','دورات',         'Courses'),
+    WaSubCategory('🏫','مدرسة/جامعة',  'School/University'),
+    WaSubCategory('📖','كتب دراسية',   'Textbooks'),
+    WaSubCategory('💾','برامج',         'Software'),
+    WaSubCategory('✏️','قرطاسية',      'Stationery'),
+    WaSubCategory('🏅','امتحانات',      'Exams'),
+  ]),
+  WaCategory(id:'family',        label:'عائلة',     labelEn:'Family',         emoji:'👨‍👩‍👧', subs:[
+    WaSubCategory('🧒','مصروف أطفال',  'Child Allowance'),
+    WaSubCategory('🎂','مناسبات',       'Occasions'),
+    WaSubCategory('🍼','رعاية أطفال',  'Childcare'),
+    WaSubCategory('🧓','رعاية أهل',    'Parent Care'),
+    WaSubCategory('🎀','هدايا عائلية', 'Family Gifts'),
+    WaSubCategory('🏡','نفقات منزلية', 'Household'),
+  ]),
 ];
 
 const kIncomeCategories = <WaCategory>[
-  WaCategory(id:'salary',      label:'راتب',     emoji:'💼', subs:[WaSubCategory('💼','راتب شهري'),WaSubCategory('🏅','مكافأة'),WaSubCategory('⏰','عمل إضافي'),WaSubCategory('💻','عمل حر'),WaSubCategory('📊','عمولة'),WaSubCategory('🎖️','علاوة')]),
-  WaCategory(id:'business',   label:'أعمال',    emoji:'🏢', subs:[WaSubCategory('🏢','أرباح مشروع'),WaSubCategory('🛒','مبيعات'),WaSubCategory('🤝','خدمات'),WaSubCategory('💡','استشارات'),WaSubCategory('📦','بضاعة'),WaSubCategory('🔑','امتياز')]),
-  WaCategory(id:'investment',  label:'استثمار', emoji:'📈', subs:[WaSubCategory('📈','أسهم'),WaSubCategory('🏘️','عقارات'),WaSubCategory('🏦','فوائد بنكية'),WaSubCategory('₿','عملات رقمية'),WaSubCategory('🪙','ذهب'),WaSubCategory('💹','صناديق')]),
-  WaCategory(id:'rental',      label:'إيجارات', emoji:'🏠', subs:[WaSubCategory('🏠','إيجار شقة'),WaSubCategory('🏪','إيجار محل'),WaSubCategory('🚗','إيجار سيارة'),WaSubCategory('📦','إيجار مستودع'),WaSubCategory('🌐','إيجار رقمي')]),
-  WaCategory(id:'other_income',label:'دخل آخر', emoji:'💰', subs:[WaSubCategory('🎁','هدية'),WaSubCategory('🏛️','ميراث'),WaSubCategory('💰','بيع أصل'),WaSubCategory('🔄','استرداد'),WaSubCategory('🤲','تبرع مُستلم'),WaSubCategory('➕','أخرى')]),
+  WaCategory(id:'salary',      label:'راتب',     labelEn:'Salary',       emoji:'💼', subs:[
+    WaSubCategory('💼','راتب شهري',   'Monthly Salary'),
+    WaSubCategory('🏅','مكافأة',       'Bonus'),
+    WaSubCategory('⏰','عمل إضافي',   'Overtime'),
+    WaSubCategory('💻','عمل حر',       'Freelance'),
+    WaSubCategory('📊','عمولة',        'Commission'),
+    WaSubCategory('🎖️','علاوة',       'Allowance'),
+  ]),
+  WaCategory(id:'business',   label:'أعمال',    labelEn:'Business',     emoji:'🏢', subs:[
+    WaSubCategory('🏢','أرباح مشروع', 'Business Profit'),
+    WaSubCategory('🛒','مبيعات',       'Sales'),
+    WaSubCategory('🤝','خدمات',        'Services'),
+    WaSubCategory('💡','استشارات',     'Consulting'),
+    WaSubCategory('📦','بضاعة',        'Goods'),
+    WaSubCategory('🔑','امتياز',       'Franchise'),
+  ]),
+  WaCategory(id:'investment',  label:'استثمار', labelEn:'Investment',   emoji:'📈', subs:[
+    WaSubCategory('📈','أسهم',          'Stocks'),
+    WaSubCategory('🏘️','عقارات',       'Real Estate'),
+    WaSubCategory('🏦','فوائد بنكية',  'Bank Interest'),
+    WaSubCategory('₿','عملات رقمية',   'Cryptocurrency'),
+    WaSubCategory('🪙','ذهب',           'Gold'),
+    WaSubCategory('💹','صناديق',        'Funds'),
+  ]),
+  WaCategory(id:'rental',      label:'إيجارات', labelEn:'Rentals',      emoji:'🏠', subs:[
+    WaSubCategory('🏠','إيجار شقة',    'Apartment Rent'),
+    WaSubCategory('🏪','إيجار محل',    'Shop Rent'),
+    WaSubCategory('🚗','إيجار سيارة', 'Car Rent'),
+    WaSubCategory('📦','إيجار مستودع', 'Warehouse Rent'),
+    WaSubCategory('🌐','إيجار رقمي',  'Digital Rent'),
+  ]),
+  WaCategory(id:'other_income',label:'دخل آخر', labelEn:'Other Income', emoji:'💰', subs:[
+    WaSubCategory('🎁','هدية',          'Gift'),
+    WaSubCategory('🏛️','ميراث',        'Inheritance'),
+    WaSubCategory('💰','بيع أصل',      'Asset Sale'),
+    WaSubCategory('🔄','استرداد',       'Refund'),
+    WaSubCategory('🤲','تبرع مُستلم',  'Donation Received'),
+    WaSubCategory('➕','أخرى',          'Other'),
+  ]),
 ];
 
 WaCategory? findCategory(String id, String type) {
@@ -39,3 +141,5 @@ WaCategory? findCategory(String id, String type) {
 
 const kMonthsAr = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 const kDaysAr   = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const kMonthsEn = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const kDaysEn   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];

@@ -44,6 +44,20 @@
                 android:value="2"/>
         </activity>
 
+        <!-- Activity مستقلة للإدخال السريع من الويدجت -->
+        <activity
+            android:name=".QuickAddActivity"
+            android:exported="true"
+            android:launchMode="singleInstance"
+            android:taskAffinity="com.wafra.wafra.quickadd"
+            android:theme="@style/NormalTheme"
+            android:windowSoftInputMode="stateVisible|adjustResize"
+            android:excludeFromRecents="true">
+            <meta-data
+                android:name="flutterEmbedding"
+                android:value="2"/>
+        </activity>
+
         <!-- BroadcastReceiver لاستقبال SMS -->
         <receiver
             android:name=".SmsReceiver"

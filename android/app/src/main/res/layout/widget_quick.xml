@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_quick_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="horizontal"
@@ -7,62 +8,77 @@
     android:padding="10dp"
     android:gravity="center_vertical">
 
-    <!-- شعار وفرة -->
-    <TextView
+    <!-- رمز $ -->
+    <LinearLayout
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="⬡"
-        android:textColor="#C9A84C"
-        android:textSize="18sp"
-        android:layout_marginEnd="8dp"/>
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_marginEnd="10dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="$"
+            android:textColor="#C9A84C"
+            android:textSize="26sp"
+            android:textStyle="bold"/>
+    </LinearLayout>
 
-    <!-- زر مصروف -->
+    <!-- زر مصروف: دائرة مع سهم عريض -->
     <LinearLayout
         android:id="@+id/btn_expense"
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="1"
-        android:layout_marginEnd="5dp"
+        android:layout_marginEnd="8dp"
         android:orientation="vertical"
-        android:background="@drawable/widget_btn_expense"
         android:gravity="center">
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="↓"
-            android:textColor="#E05C5C"
-            android:textSize="16sp"
-            android:textStyle="bold"/>
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:text="▼"
+            android:textColor="#E74C3C"
+            android:textSize="30sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:background="@drawable/widget_btn_expense"/>
         <TextView
+            android:id="@+id/widget_expense_btn_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="مصروف"
-            android:textColor="#E05C5C"
-            android:textSize="9sp"/>
+            android:textColor="#CCE74C3C"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:layout_marginTop="4dp"/>
     </LinearLayout>
 
-    <!-- زر دخل -->
+    <!-- زر دخل: دائرة مع سهم عريض -->
     <LinearLayout
         android:id="@+id/btn_income"
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="1"
         android:orientation="vertical"
-        android:background="@drawable/widget_btn_income"
         android:gravity="center">
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="↑"
-            android:textColor="#4CAF82"
-            android:textSize="16sp"
-            android:textStyle="bold"/>
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:text="▲"
+            android:textColor="#27AE60"
+            android:textSize="30sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:background="@drawable/widget_btn_income"/>
         <TextView
+            android:id="@+id/widget_income_btn_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="دخل"
-            android:textColor="#4CAF82"
-            android:textSize="9sp"/>
+            android:textColor="#CC27AE60"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:layout_marginTop="4dp"/>
     </LinearLayout>
 
 </LinearLayout>

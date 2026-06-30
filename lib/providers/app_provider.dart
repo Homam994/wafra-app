@@ -23,6 +23,7 @@ class AppProvider extends ChangeNotifier {
   List<BillModel>   _bills        = [];
   bool              _isDark       = true;
   bool              _loading      = false;
+  Locale            _locale       = const Locale('ar', 'SA');
 
   // ✅ مشكلة التكرار: منع تشغيل _applyRecurring أثناء تنفيذه
   bool _applyingRecur = false;
@@ -36,6 +37,8 @@ class AppProvider extends ChangeNotifier {
   UserProfile?       get profile   => _profile;
   bool               get isDark    => _isDark;
   bool               get isLoading => _loading;
+  Locale             get locale    => _locale;
+  bool               get isArabic  => _locale.languageCode == 'ar';
   String             get currency  => _profile?.currency ?? 'SAR';
   String             get userName  => _profile?.name ?? '';
   Map<String,double> get budgets   => _profile?.budgets ?? {};
@@ -56,7 +59,17 @@ class AppProvider extends ChangeNotifier {
   Future<void> loadTheme() async {
     final p = await SharedPreferences.getInstance();
     _isDark = p.getBool('isDark') ?? true;
+    final lang = p.getString('language') ?? 'ar';
+    _locale = lang == 'en' ? const Locale('en', 'US') : const Locale('ar', 'SA');
     notifyListeners();
+  }
+
+  Future<void> setLocale(Locale locale) async {
+    _locale = locale;
+    final p = await SharedPreferences.getInstance();
+    await p.setString('language', locale.languageCode);
+    notifyListeners();
+    _updateWidget(); // Refresh widget language
   }
 
   Future<void> loadUser(String uid) async {
@@ -156,10 +169,14 @@ class AppProvider extends ChangeNotifier {
     );
   }
 
-  String _monthName(int m) => const [
-    '', 'يناير','فبراير','مارس','أبريل','مايو','يونيو',
-    'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'
-  ][m];
+  String _monthName(int m) {
+    if (_locale.languageCode == 'en') {
+      return const ['', 'January','February','March','April','May','June',
+        'July','August','September','October','November','December'][m];
+    }
+    return const ['', 'يناير','فبراير','مارس','أبريل','مايو','يونيو',
+      'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'][m];
+  }
 
   Future<void> addRecur(RecurModel r) async {
     final uid = _profile?.uid; if (uid == null) return;
@@ -340,7 +357,7 @@ class AppProvider extends ChangeNotifier {
       final pct   = spent / limit;
       final catLabel = kExpenseCategories
           .firstWhere((c) => c.id == cat,
-              orElse: () => WaCategory(id: cat, label: cat, emoji: '📊', subs: []))
+              orElse: () => WaCategory(id: cat, label: cat, labelEn: cat, emoji: '📊', subs: []))
           .label;
 
       if (pct >= 1.0) {
@@ -383,6 +400,7 @@ class AppProvider extends ChangeNotifier {
     final p = await SharedPreferences.getInstance();
     await p.setBool('isDark', _isDark);
     notifyListeners();
+    _updateWidget(); // Refresh widget theme
   }
 
   // ── Analytics ────────────────────────────────
@@ -445,15 +463,17 @@ class AppProvider extends ChangeNotifier {
 
   String fmtDate(String date) {
     final d = DateTime.tryParse(date); if (d == null) return date;
-    const m = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
-                'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+    final m = _locale.languageCode == 'en'
+        ? ['January','February','March','April','May','June','July','August','September','October','November','December']
+        : ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
     return '${d.day} ${m[d.month-1]} ${d.year}';
   }
 
   String fmtDateShort(String date) {
     final d = DateTime.tryParse(date); if (d == null) return date;
-    const m = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
-                'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+    final m = _locale.languageCode == 'en'
+        ? ['January','February','March','April','May','June','July','August','September','October','November','December']
+        : ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
     return '${d.day} ${m[d.month-1]}';
   }
 
@@ -508,7 +528,7 @@ extension AppProviderAnalytics on AppProvider {
     return sorted.map((e) {
       final cat = kExpenseCategories.firstWhere(
         (c) => c.id == e.key,
-        orElse: () => WaCategory(id: e.key, label: e.key, emoji: '📊', subs: []),
+        orElse: () => WaCategory(id: e.key, label: e.key, labelEn: e.key, emoji: '📊', subs: []),
       );
       return (
         catId : e.key,
@@ -527,7 +547,8 @@ extension AppProviderAnalytics on AppProvider {
       final d    = DateTime(now.year, now.month - 11 + i);
       final txs  = txForMonth(d.year, d.month);
       final exp  = totalExpense(txs);
-      return (month: kMonthsAr[d.month - 1], amount: exp);
+      final mNames = _locale.languageCode == 'en' ? kMonthsEn : kMonthsAr;
+      return (month: mNames[d.month - 1], amount: exp);
     }).where((m) => m.amount > 0).toList();
 
     if (months.isEmpty) return (bestMonth: '—', bestAmt: 0, worstMonth: '—', worstAmt: 0);
@@ -566,7 +587,9 @@ extension AppProviderAnalytics on AppProvider {
 
   // ── ٦. أكثر يوم في الأسبوع إنفاقاً ──
   List<({String day, double total})> spendingByWeekday() {
-    const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+    final days = _locale.languageCode == 'en'
+        ? ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+        : ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
     final sums = List<double>.filled(7, 0);
     for (final tx in transactions.where((t) => t.isExpense)) {
       final d = DateTime.tryParse(tx.date);

@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/categories.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_provider.dart';
+import '../../../generated/l10n/app_localizations.dart';
 
 class AddTransactionSheet extends StatefulWidget {
   final TxModel? editing;
@@ -68,8 +69,9 @@ class _State extends State<AddTransactionSheet> {
       : _cats.firstWhere((c) => c.id == _mainCat, orElse: () => _cats.first);
 
   Future<void> _save() async {
-    if (_amount == null || _amount! <= 0) { _snack('أدخل مبلغاً صحيحاً'); return; }
-    if (_mainCat == null)                 { _snack('اختر التصنيف');        return; }
+    final isAr = context.read<AppProvider>().locale.languageCode == 'ar';
+    if (_amount == null || _amount! <= 0) { _snack(isAr ? 'أدخل مبلغاً صحيحاً' : 'Enter a valid amount'); return; }
+    if (_mainCat == null)                 { _snack(isAr ? 'اختر التصنيف' : 'Choose a category'); return; }
     setState(() => _saving = true);
     final ap = context.read<AppProvider>();
     final tx = TxModel(
@@ -91,7 +93,7 @@ class _State extends State<AddTransactionSheet> {
     }
     if (mounted) {
       Navigator.pop(context);
-      _snack(widget.editing != null ? '✓ تم التعديل' : '✓ تم الحفظ');
+      _snack(context.read<AppProvider>().locale.languageCode == 'ar' ? (widget.editing != null ? '✓ تم التعديل' : '✓ تم الحفظ') : (widget.editing != null ? '✓ Updated' : '✓ Saved'));
     }
     if (mounted) setState(() => _saving = false);
   }
@@ -102,6 +104,7 @@ class _State extends State<AddTransactionSheet> {
   @override
   Widget build(BuildContext context) {
     // ✅ كل الألوان تتبع الثيم
+    final lang     = context.watch<AppProvider>().locale.languageCode;
     final isDark   = Theme.of(context).brightness == Brightness.dark;
     final sheetBg  = isDark ? WaColors.obsidian2 : Colors.white;
     final fieldBg  = isDark ? WaColors.obsidian3 : const Color(0xFFEDE9E0);
@@ -196,9 +199,9 @@ class _State extends State<AddTransactionSheet> {
                   borderRadius : BorderRadius.circular(10)),
                 padding: const EdgeInsets.all(3),
                 child: Row(children: [
-                  _typeBtn(context, TxType.expense, '📤 مصروف',
+                  _typeBtn(context, TxType.expense, lang == 'en' ? '📤 Expense' : '📤 مصروف',
                       WaColors.danger,  fieldBg),
-                  _typeBtn(context, TxType.income,  '📥 دخل',
+                  _typeBtn(context, TxType.income,  lang == 'en' ? '📥 Income' : '📥 دخل',
                       WaColors.success, fieldBg),
                 ]),
               ),
@@ -224,12 +227,12 @@ class _State extends State<AddTransactionSheet> {
                     Expanded(child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(_selectedCat?.label ?? 'اختر التصنيف',
+                        Text(_selectedCat?.localizedLabel(lang) ?? (lang == 'en' ? 'Choose category' : 'اختر التصنيف'),
                           style: const TextStyle(
                               fontSize: 14, fontWeight: FontWeight.w600)),
                         Text(_subCat ?? (_selectedCat != null
-                            ? 'اضغط لتغيير التصنيف الفرعي'
-                            : 'اضغط لاختيار التصنيف'),
+                            ? lang == 'en' ? 'Tap to change subcategory' : 'اضغط لتغيير التصنيف الفرعي'
+                            : lang == 'en' ? 'Tap to choose category' : 'اضغط لاختيار التصنيف'),
                           style: const TextStyle(
                               fontSize: 11, color: WaColors.textMuted)),
                       ])),
@@ -247,7 +250,7 @@ class _State extends State<AddTransactionSheet> {
                 crossFadeState: _catOpen
                     ? CrossFadeState.showFirst : CrossFadeState.showSecond,
                 firstChild: _buildCatSheet(
-                    catShBg, catItBg, rowBorder),
+                    catShBg, catItBg, rowBorder, lang),
                 secondChild: const SizedBox.shrink(),
               ),
               const SizedBox(height: 12),
@@ -259,8 +262,8 @@ class _State extends State<AddTransactionSheet> {
                 Expanded(child: TextField(
                   controller: _noteCtrl,
                   decoration: InputDecoration(
-                    labelText : 'ملاحظة',
-                    hintText  : 'اختياري',
+                    labelText : lang == 'en' ? 'Note' : 'ملاحظة',
+                    hintText  : lang == 'en' ? 'Optional' : 'اختياري',
                     filled    : true,
                     fillColor : fieldBg,   // ✅ ثيم
                     prefixIcon: const Icon(Icons.note_outlined,
@@ -281,7 +284,7 @@ class _State extends State<AddTransactionSheet> {
                     ? const SizedBox(width: 22, height: 22,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: WaColors.obsidian))
-                    : const Text('💾 حفظ',
+                    : Text('💾 ${AppLocalizations.of(context).save}',
                         style: TextStyle(fontSize: 15,
                             fontWeight: FontWeight.w700,
                             color: WaColors.obsidian)),
@@ -316,7 +319,7 @@ class _State extends State<AddTransactionSheet> {
     ));
   }
 
-  Widget _buildCatSheet(Color shBg, Color itBg, Color border) {
+  Widget _buildCatSheet(Color shBg, Color itBg, Color border, String lang) {
     final sel = _selectedCat;
     return Container(
       margin  : const EdgeInsets.only(top: 4),
@@ -357,7 +360,7 @@ class _State extends State<AddTransactionSheet> {
                     Text(cat.emoji,
                         style: const TextStyle(fontSize: 20)),
                     const SizedBox(height: 3),
-                    Text(cat.label, maxLines: 1,
+                    Text(cat.localizedLabel(lang), maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 9,
@@ -374,7 +377,7 @@ class _State extends State<AddTransactionSheet> {
           // Subcats
           if (sel != null) ...[
             const Divider(height: 16),
-            const Text('تصنيف فرعي',
+            Text(AppLocalizations.of(context).subCategory,
               style: TextStyle(fontSize: 10, letterSpacing: 1.5,
                   color: WaColors.textMuted)),
             const SizedBox(height: 6),
@@ -405,7 +408,7 @@ class _State extends State<AddTransactionSheet> {
                       Text(sub.emoji,
                           style: const TextStyle(fontSize: 14)),
                       const SizedBox(width: 4),
-                      Text(sub.label, style: TextStyle(fontSize: 12,
+                      Text(sub.localizedLabel(lang), style: TextStyle(fontSize: 12,
                         fontWeight: active
                             ? FontWeight.w600 : FontWeight.w400,
                         color: active ? sel.color : WaColors.textSecondary)),

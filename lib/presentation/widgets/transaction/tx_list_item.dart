@@ -5,6 +5,7 @@ import '../../../core/constants/categories.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_provider.dart';
 import 'add_transaction_sheet.dart';
+import '../../../generated/l10n/app_localizations.dart';
 
 class TxListItem extends StatelessWidget {
   final TxModel tx;
@@ -13,9 +14,16 @@ class TxListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lang  = context.read<AppProvider>().locale.languageCode;
     final ap    = context.watch<AppProvider>();
     final cat   = findCategory(tx.cat, tx.isIncome ? 'income' : 'expense');
     final color = WaColors.catColor(tx.cat);
+    // Translate sub-category: stored in Arabic, find matching WaSubCategory
+    final subLabel = tx.sub.isNotEmpty
+        ? (cat?.subs.cast<WaSubCategory?>().firstWhere(
+              (s) => s?.label == tx.sub, orElse: () => null)
+            ?.localizedLabel(lang) ?? tx.sub)
+        : '';
 
     // الصف الأساسي
     Widget row = InkWell(
@@ -39,14 +47,14 @@ class TxListItem extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                tx.sub.isNotEmpty ? tx.sub : (cat?.label ?? tx.cat),
+                subLabel.isNotEmpty ? subLabel : (cat?.localizedLabel(lang) ?? tx.cat),
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                 overflow: TextOverflow.ellipsis),
               const SizedBox(height: 2),
               Text(
-                '${cat?.label ?? tx.cat}'
+                '${cat?.localizedLabel(lang) ?? tx.cat}'
                 '${tx.note.isNotEmpty ? " · ${tx.note}" : ""}'
-                ' · ${_fmtDate(tx.date)}',
+                ' · ${_fmtDate(tx.date, lang)}',
                 style: const TextStyle(fontSize: 11, color: WaColors.textMuted),
                 overflow: TextOverflow.ellipsis),
             ],
@@ -66,7 +74,7 @@ class TxListItem extends StatelessWidget {
               color: WaColors.textMuted,
               padding: const EdgeInsets.all(4),
               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              tooltip: 'حذف',
+              tooltip: context.read<AppProvider>().locale.languageCode == 'ar' ? 'حذف' : 'Delete',
               onPressed: () => _confirmDelete(context, ap),
             ),
           ],
@@ -92,15 +100,15 @@ class TxListItem extends StatelessWidget {
         return await showDialog<bool>(
           context: context,
           builder: (_) => AlertDialog(
-            title  : const Text('حذف المعاملة'),
-            content: const Text('هل أنت متأكد؟ لا يمكن التراجع.'),
+            title  : Text(AppLocalizations.of(context).deleteTransaction),
+            content: Text(AppLocalizations.of(context).deleteTransactionConfirm),
             actions: [
               TextButton(onPressed: () => Navigator.pop(context, false),
-                  child: const Text('إلغاء')),
+                  child: Text(AppLocalizations.of(context).cancel)),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
                 style: TextButton.styleFrom(foregroundColor: WaColors.danger),
-                child: const Text('حذف'),
+                child: Text(AppLocalizations.of(context).delete),
               ),
             ],
           ),
@@ -112,18 +120,19 @@ class TxListItem extends StatelessWidget {
   }
 
   Future<void> _confirmDelete(BuildContext ctx, AppProvider ap) async {
+    final l10n = AppLocalizations.of(ctx);
     final ok = await showDialog<bool>(
       context: ctx,
       builder: (_) => AlertDialog(
-        title  : const Text('حذف المعاملة'),
-        content: const Text('هل أنت متأكد؟ لا يمكن التراجع.'),
+        title  : Text(l10n.deleteTransaction),
+        content: Text(l10n.deleteTransactionConfirm),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('إلغاء')),
+              child: Text(l10n.cancel)),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: WaColors.danger),
-            child: const Text('حذف'),
+            child: Text(l10n.delete),
           ),
         ],
       ),
@@ -141,10 +150,13 @@ class TxListItem extends StatelessWidget {
     ),
   );
 
-  String _fmtDate(String date) {
+  String _fmtDate(String date, String lang) {
     final d = DateTime.tryParse(date); if (d == null) return date;
-    const m = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
-                'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+    final m = lang == 'en'
+        ? ['January','February','March','April','May','June',
+           'July','August','September','October','November','December']
+        : ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
+           'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
     return '${d.day} ${m[d.month-1]}';
   }
 }

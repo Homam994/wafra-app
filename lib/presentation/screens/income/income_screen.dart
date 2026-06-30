@@ -10,6 +10,7 @@ import '../../../providers/app_provider.dart';
 import '../../widgets/common/wa_card.dart';
 import '../../widgets/transaction/tx_list_item.dart';
 import '../../widgets/transaction/add_transaction_sheet.dart';
+import '../../../generated/l10n/app_localizations.dart';
 
 class IncomeScreen extends StatelessWidget {
   const IncomeScreen({super.key});
@@ -17,13 +18,14 @@ class IncomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ap   = context.watch<AppProvider>();
+    final l10n = AppLocalizations.of(context);
     final txs  = ap.transactions.where((t) => t.isIncome).toList();
     final bycat= ap.incomeByCategory(txs);
     final total= ap.totalIncome(txs);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('المداخيل'),
+        title: Text(l10n.incomes),
         leading: Builder(
           builder: (ctx) => IconButton(
             icon: const Icon(Icons.menu),
@@ -70,7 +72,7 @@ class IncomeScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('سجل المداخيل',
+                    Text(l10n.incomeHistory,
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                     Text('${txs.length} معاملة',
                       style: TextStyle(fontSize: 12, color: WaColors.textMuted)),
@@ -78,7 +80,7 @@ class IncomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 if (txs.isEmpty)
-                  _empty()
+                  _empty(context)
                 else
                   ListView.separated(
                     shrinkWrap: true,
@@ -96,17 +98,20 @@ class IncomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _empty() => const Padding(
-    padding: EdgeInsets.symmetric(vertical: 24),
-    child: Center(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text('💰', style: TextStyle(fontSize: 36)),
-        SizedBox(height: 8),
-        Text('لا توجد مداخيل مسجلة',
-          style: TextStyle(color: WaColors.textMuted, fontSize: 13)),
-      ]),
-    ),
-  );
+  Widget _empty(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      child: Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('💰', style: TextStyle(fontSize: 36)),
+          const SizedBox(height: 8),
+          Text(l10n.noIncomes,
+            style: const TextStyle(color: WaColors.textMuted, fontSize: 13)),
+        ]),
+      ),
+    );
+  }
 }
 
 class _CatCard extends StatelessWidget {

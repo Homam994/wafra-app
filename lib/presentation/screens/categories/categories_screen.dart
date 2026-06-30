@@ -6,13 +6,16 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/categories.dart';
 import '../../../providers/app_provider.dart';
 import '../../widgets/common/wa_card.dart';
+import '../../../generated/l10n/app_localizations.dart';
 
 class CategoriesScreen extends StatelessWidget {
   const CategoriesScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final ap     = context.watch<AppProvider>();
+    final ap   = context.watch<AppProvider>();
+    final l10n = AppLocalizations.of(context);
+    final lang = ap.locale.languageCode;
     final txs    = ap.transactions.where((t) => t.isExpense).toList();
     final total  = ap.totalExpense(txs);
     final bycat  = ap.expenseByCategory(txs);
@@ -20,7 +23,7 @@ class CategoriesScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('تحليل التصنيفات'),
+        title: Text(l10n.categoryAnalysis),
         leading: Builder(
           builder: (ctx) => IconButton(
             icon: const Icon(Icons.menu),
@@ -29,11 +32,11 @@ class CategoriesScreen extends StatelessWidget {
         ),
       ),
       body: sorted.isEmpty
-          ? const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Text('📊', style: TextStyle(fontSize: 48)),
-              SizedBox(height: 12),
-              Text('لا توجد بيانات بعد',
-                  style: TextStyle(color: WaColors.textMuted, fontSize: 14)),
+          ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Text('📊', style: TextStyle(fontSize: 48)),
+              const SizedBox(height: 12),
+              Text(l10n.noData,
+                  style: const TextStyle(color: WaColors.textMuted, fontSize: 14)),
             ]))
           : ListView(
               padding: const EdgeInsets.all(16),
@@ -42,10 +45,10 @@ class CategoriesScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('إجمالي المصاريف حسب التصنيف',
+                      Text(l10n.totalExpensesByCategory,
                         style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 4),
-                      Text('${txs.length} معاملة · ${ap.fmt(total)} إجمالاً',
+                      Text(l10n.categoryTxSummary(txs.length, ap.fmt(total)),
                         style: TextStyle(fontSize: 12, color: WaColors.textMuted)),
                       const SizedBox(height: 16),
                       ...sorted.asMap().entries.map((e) =>
@@ -84,6 +87,7 @@ class _CatRowState extends State<_CatRow> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.read<AppProvider>().locale.languageCode;
     final cat   = findCategory(widget.catId, 'expense');
     final color = WaColors.catColor(widget.catId);
     final pct   = widget.total > 0 ? widget.amount / widget.total : 0.0;
@@ -91,7 +95,7 @@ class _CatRowState extends State<_CatRow> {
     // Subcategory breakdown
     final subs = <String, double>{};
     for (final tx in widget.txs.where((t) => t.cat == widget.catId)) {
-      final key = tx.sub.isNotEmpty ? tx.sub : 'أخرى';
+      final key = tx.sub.isNotEmpty ? tx.sub : (lang == 'en' ? 'Other' : 'أخرى');
       subs[key] = (subs[key] ?? 0) + tx.amount;
     }
     final subsSorted = subs.entries.toList()..sort((a,b) => b.value.compareTo(a.value));
@@ -114,7 +118,7 @@ class _CatRowState extends State<_CatRow> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(cat?.label ?? widget.catId,
+                          Text(cat?.localizedLabel(lang) ?? widget.catId,
                             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                           Row(children: [
                             Text(widget.ap.fmt(widget.amount),
@@ -156,7 +160,11 @@ class _CatRowState extends State<_CatRow> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: Text(e.key,
+                          child: Text(
+                            // Translate stored Arabic sub-label to current locale
+                            cat?.subs.cast<WaSubCategory?>()
+                              .firstWhere((s) => s?.label == e.key, orElse: () => null)
+                              ?.localizedLabel(lang) ?? e.key,
                             style: TextStyle(fontSize: 12, color: WaColors.textSecondary)),
                         ),
                         Text(widget.ap.fmt(e.value),

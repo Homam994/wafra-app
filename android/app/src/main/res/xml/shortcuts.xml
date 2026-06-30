@@ -9,10 +9,10 @@
         android:shortcutShortLabel="@string/shortcut_expense_short"
         android:shortcutLongLabel="@string/shortcut_expense_long">
         <intent
-            android:action="com.wafra.wafra.QUICK_ADD"
+            android:action="android.intent.action.MAIN"
             android:targetPackage="com.wafra.wafra"
-            android:targetClass="com.wafra.wafra.MainActivity">
-            <extra android:name="type" android:value="expense" />
+            android:targetClass="com.wafra.wafra.QuickAddActivity">
+            <extra android:name="quick_add_type" android:value="expense" />
         </intent>
         <categories android:name="android.shortcut.conversation" />
     </shortcut>
@@ -25,10 +25,10 @@
         android:shortcutShortLabel="@string/shortcut_income_short"
         android:shortcutLongLabel="@string/shortcut_income_long">
         <intent
-            android:action="com.wafra.wafra.QUICK_ADD"
+            android:action="android.intent.action.MAIN"
             android:targetPackage="com.wafra.wafra"
-            android:targetClass="com.wafra.wafra.MainActivity">
-            <extra android:name="type" android:value="income" />
+            android:targetClass="com.wafra.wafra.QuickAddActivity">
+            <extra android:name="quick_add_type" android:value="income" />
         </intent>
         <categories android:name="android.shortcut.conversation" />
     </shortcut>

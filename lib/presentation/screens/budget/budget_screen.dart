@@ -7,6 +7,7 @@ import '../../../core/constants/categories.dart';
 import '../../../providers/app_provider.dart';
 import '../../widgets/common/wa_card.dart';
 import '../home/home_screen.dart';
+import '../../../generated/l10n/app_localizations.dart';
 
 class BudgetScreen extends StatefulWidget {
   const BudgetScreen({super.key});
@@ -54,10 +55,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(
-        content: const Row(children: [
+        content: Row(children: [
           Icon(Icons.check_circle, color: Colors.white, size: 18),
           SizedBox(width: 8),
-          Text('تم حفظ الميزانية'),
+          Text(AppLocalizations.of(context).budgetSaved),
         ]),
         backgroundColor: WaColors.success,
         behavior: SnackBarBehavior.floating,
@@ -70,6 +71,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
   @override
   Widget build(BuildContext context) {
     final ap      = context.watch<AppProvider>();
+    final l10n = AppLocalizations.of(context);
     final budgets = ap.budgets;
     final now     = DateTime.now();
     final mTxs    = ap.txForMonth(now.year, now.month);
@@ -87,7 +89,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('الميزانية الشهرية'),
+        title: Text(l10n.monthlyBudget),
         leading: Builder(builder: (ctx) => IconButton(
           icon: const Icon(Icons.menu),
           onPressed: () => MenuOpener.of(context)?.onMenu())),
@@ -99,7 +101,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
             child: TextButton.icon(
               onPressed: _dirty ? () => _saveAll(budgets) : null,
               icon: const Icon(Icons.save_rounded, size: 18),
-              label: const Text('حفظ', style: TextStyle(fontSize: 14,
+              label: Text(l10n.save, style: TextStyle(fontSize: 14,
                   fontWeight: FontWeight.w700)),
               style: TextButton.styleFrom(
                 foregroundColor: WaColors.gold,
@@ -116,13 +118,13 @@ class _BudgetScreenState extends State<BudgetScreen> {
           WaCard(child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('إجمالي الشهر الحالي',
+              Text(l10n.totalThisMonth,
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
               const SizedBox(height: 12),
               if (totalBudget > 0) ...[
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('المُنفَق',
+                    Text(l10n.spent,
                       style: TextStyle(fontSize: 12, color: WaColors.textMuted)),
                     Text('${ap.fmt(totalSpent)} / ${ap.fmt(totalBudget)}',
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
@@ -136,10 +138,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
                         : const Color(0xFFEDE9E0),
                     valueColor: AlwaysStoppedAnimation(summaryColor))),
                 const SizedBox(height: 6),
-                Text('${(totalPct * 100).round()}% من الميزانية الكلية',
+                Text(l10n.percentOfBudget((totalPct * 100).round()),
                   style: TextStyle(fontSize: 11, color: WaColors.textMuted)),
               ] else
-                Text('لم تُحدَّد ميزانية بعد — أدخل الحد أدناه',
+                Text(l10n.noBudgetSet,
                   style: TextStyle(fontSize: 13, color: WaColors.textMuted)),
             ],
           )).animate().fadeIn(duration: 300.ms),
@@ -177,7 +179,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
               child: ElevatedButton.icon(
                 onPressed: _dirty ? () => _saveAll(budgets) : null,
                 icon: const Icon(Icons.save_rounded, size: 20),
-                label: const Text('حفظ التعديلات',
+                label: Text(l10n.saveChanges,
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: WaColors.gold,
@@ -212,6 +214,8 @@ class _BudgetRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final lang = context.read<AppProvider>().locale.languageCode;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Column(children: [
@@ -226,7 +230,7 @@ class _BudgetRow extends StatelessWidget {
               children: [
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(cat.label,
+                    Text(cat.localizedLabel(lang),
                       style: const TextStyle(fontSize: 13,
                           fontWeight: FontWeight.w600)),
                     if (limit > 0 && pct >= 0.8)
@@ -252,13 +256,13 @@ class _BudgetRow extends StatelessWidget {
                   const SizedBox(height: 3),
                   Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('${spent.toStringAsFixed(0)} مُنفَق',
+                      Text(l10n.spentAmount(spent.toStringAsFixed(0)),
                         style: TextStyle(fontSize: 10, color: WaColors.textMuted)),
-                      Text('الحد: ${limit.toStringAsFixed(0)} $currency',
+                      Text(l10n.limitAmount(limit.toStringAsFixed(0), currency),
                         style: TextStyle(fontSize: 10, color: WaColors.textMuted)),
                     ]),
                 ] else
-                  Text('${spent.toStringAsFixed(0)} $currency مُنفَق · لا حد',
+                  Text(l10n.spentNoLimit(spent.toStringAsFixed(0), currency),
                     style: TextStyle(fontSize: 10, color: WaColors.textMuted)),
               ],
             ),

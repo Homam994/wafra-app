@@ -26,6 +26,7 @@ import '../recurring/recurring_screen.dart';
 import '../categories/categories_screen.dart';
 import '../settings/settings_screen.dart';
 import '../../widgets/transaction/add_transaction_sheet.dart';
+import '../../../generated/l10n/app_localizations.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -37,26 +38,21 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isOnline = true;
   bool _syncing  = false;
 
-  // ✅ مشكلة 1: GlobalKey للـ Scaffold — يُمرَّر لكل الشاشات الداخلية
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // ── قفل الخلفية ─────────────────────────────
   bool _isLocked      = false;
   bool _lockBgEnabled = false;
 
-  // مراقبة دورة حياة التطبيق لمعالجة SMS الفائتة
   late final AppLifecycleListener _lifecycleListener;
 
   static const _pages = <Widget>[
     DashboardScreen(), TransactionsScreen(), IncomeScreen(),
     ExpensesScreen(), BudgetScreen(), RecurringScreen(),
     ReportsScreen(), CategoriesScreen(), SettingsScreen(),
-    AnalyticsScreen(),  // index 9
-    BillsScreen(),      // index 10
+    AnalyticsScreen(),
+    BillsScreen(),
   ];
   static const _navOrder = [0, 1, 4, 6];
-
-  static const _quickChannel = MethodChannel('com.wafra.wafra/quick_add');
 
   @override
   void initState() {
@@ -64,33 +60,15 @@ class _HomeScreenState extends State<HomeScreen> {
     _initNetwork();
     _loadLockBgSetting();
 
-    // ── استقبال الاختصار وهو التطبيق مفتوح (onNewIntent) ──
-    _quickChannel.setMethodCallHandler((call) async {
-      if (call.method == 'openQuickAdd' && mounted) {
-        final type = call.arguments as String? ?? 'expense';
-        Navigator.push(context, MaterialPageRoute(
-          fullscreenDialog: true,
-          builder: (_) => QuickAddScreen(type: type),
-        ));
-      }
-    });
-
-    // مراقبة العودة للمقدمة لمعالجة SMS الفائتة + قفل الخلفية
+    // Register handler for when app is already running
     _lifecycleListener = AppLifecycleListener(
       onResume: () {
-        if (mounted) {
-          context.read<SmsProvider>().onAppResumed();
-          // ✅ قفل الخلفية: إذا كان مفعلاً وتم تأشير الحاجة للقفل
-          if (_lockBgEnabled && _isLocked) {
-            _showLockOverlay();
-          }
-        }
+        if (!mounted) return;
+        context.read<SmsProvider>().onAppResumed();
+        if (_lockBgEnabled && _isLocked) _showLockOverlay();
       },
       onHide: () {
-        // عند ذهاب التطبيق للخلفية، سجّل الحاجة للقفل
-        if (_lockBgEnabled) {
-          setState(() => _isLocked = true);
-        }
+        if (_lockBgEnabled) setState(() => _isLocked = true);
       },
     );
 
@@ -98,7 +76,6 @@ class _HomeScreenState extends State<HomeScreen> {
       final smsP = context.read<SmsProvider>();
       final ap   = context.read<AppProvider>();
 
-      // ── إعداد onAlert لـ SMS ──────────────────────────
       smsP.onAlert = (msg, isErr) {
         if (!mounted) return;
         ScaffoldMessenger.of(context)
@@ -113,20 +90,12 @@ class _HomeScreenState extends State<HomeScreen> {
           ));
       };
 
-      // ── تهيئة SmsProvider عندما يصبح الـ profile جاهزاً ──
-      // AppProvider قد يُحمِّل البيانات بعد postFrameCallback بقليل
       void tryInitSms() {
         final uid = ap.profile?.uid ?? '';
-        if (uid.isNotEmpty && !smsP.isLoading) {
-          smsP.init(uid);
-        }
+        if (uid.isNotEmpty && !smsP.isLoading) smsP.init(uid);
       }
-      // حاول فوراً
       tryInitSms();
-      // واستمع لأي تغيير في profile
       ap.addListener(tryInitSms);
-      // أزِل المستمع عند التخلص من الـ widget
-      // (نستخدم didChangeDependencies بشكل آمن — انظر dispose)
 
       ap.onAlert = (msg, isErr) {
         if (!mounted) return;
@@ -134,8 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ..hideCurrentSnackBar()
           ..showSnackBar(SnackBar(
             content: Text(msg,
-                style: const TextStyle(fontWeight: FontWeight.w600,
-                    fontSize: 13)),
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
             backgroundColor: isErr ? WaColors.danger : WaColors.warning,
             duration: const Duration(seconds: 3),
             behavior: SnackBarBehavior.floating,
@@ -144,29 +112,22 @@ class _HomeScreenState extends State<HomeScreen> {
               left: 12, right: 12,
               bottom: MediaQuery.of(context).size.height - 200,
             ),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ));
       };
     });
   }
 
   @override
-  @override
-  void dispose() {
-    _lifecycleListener.dispose();
-    super.dispose();
-  }
+  void dispose() { _lifecycleListener.dispose(); super.dispose(); }
 
-  // ── قفل الخلفية ─────────────────────────────
   Future<void> _loadLockBgSetting() async {
-    final p = await SharedPreferences.getInstance();
+    final p   = await SharedPreferences.getInstance();
     final bio = context.read<BiometricService>();
     final method = await bio.getMethod();
     if (mounted) {
       setState(() {
-        _lockBgEnabled = (method == LockMethod.enabled) &&
-            (p.getBool('lockBg') ?? false);
+        _lockBgEnabled = (method == LockMethod.enabled) && (p.getBool('lockBg') ?? false);
       });
     }
   }
@@ -174,8 +135,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showLockOverlay() {
     if (!mounted) return;
     setState(() => _isLocked = false);
-    // LockScreen يستخدم pushAndRemoveUntil داخلياً —
-    // نمرر HomeScreen كـ destination ليُعاد بناؤه نظيفاً
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
         pageBuilder: (_, __, ___) => const LockScreen(destination: HomeScreen()),
@@ -194,7 +153,7 @@ class _HomeScreenState extends State<HomeScreen> {
           if (mounted) setState(() => _syncing = false);
         });
       } else if (!online && _isOnline) {
-        setState(() { _isOnline = false; });
+        setState(() => _isOnline = false);
       }
     });
     Connectivity().checkConnectivity().then((r) {
@@ -211,7 +170,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       key   : _scaffoldKey,
       drawer: _buildDrawer(),
-      // ✅ نُمرر callback فتح الـ drawer للشاشات عبر body
       body  : Stack(children: [
         _PageHost(
           pageIdx   : _pageIdx,
@@ -219,7 +177,6 @@ class _HomeScreenState extends State<HomeScreen> {
           onMenu    : _openDrawer,
           onSwipeNav: _swipeTo,
         ),
-        // ✅ مشكلة 2: badge في الأعلى داخل Stack
         _NetworkBadge(isOnline: _isOnline, syncing: _syncing),
       ]),
       bottomNavigationBar: _buildBottomNav(surf),
@@ -227,6 +184,11 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
+
+
+
+
+
 
   void _swipeTo(int delta) {
     final pos  = _navOrder.indexOf(_pageIdx);
@@ -237,15 +199,18 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _pageIdx = _navOrder[next]);
   }
 
-  // ── Drawer ──────────────────────────────────
   Widget _buildDrawer() {
     final ap      = context.watch<AppProvider>();
+    final l10n    = AppLocalizations.of(context);
+    final isAr    = ap.locale.languageCode == 'ar';
     final initial = ap.userName.isNotEmpty ? ap.userName[0].toUpperCase() : '؟';
     final surf    = Theme.of(context).colorScheme.surface;
+
     return Drawer(
       width: 275,
       backgroundColor: surf,
       child: SafeArea(child: Column(children: [
+        // ── Header ──
         Container(
           padding: const EdgeInsets.all(20),
           decoration: const BoxDecoration(
@@ -253,11 +218,9 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Row(children: [
             CircleAvatar(radius: 22, backgroundColor: WaColors.gold,
               child: Text(initial, style: const TextStyle(
-                  color: WaColors.obsidian, fontWeight: FontWeight.w700,
-                  fontSize: 18))),
+                  color: WaColors.obsidian, fontWeight: FontWeight.w700, fontSize: 18))),
             const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(ap.userName, overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
               Text(ap.currency,
@@ -265,31 +228,35 @@ class _HomeScreenState extends State<HomeScreen> {
             ])),
           ]),
         ),
+        // ── Items ──
         Expanded(child: ListView(padding: EdgeInsets.zero, children: [
-          _dSec('الرئيسية'),
-          _dItem(Icons.grid_view_rounded,     'لوحة التحكم',       0),
-          _dSec('المعاملات'),
-          _dItem(Icons.receipt_long_outlined, 'جميع المعاملات',    1),
-          _dItem(Icons.trending_up_rounded,   'المداخيل',          2),
-          _dItem(Icons.trending_down_rounded, 'المصاريف',          3),
-          _dSec('التخطيط'),
-          _dItem(Icons.donut_large_outlined,  'الميزانية الشهرية', 4),
-          _dItem(Icons.repeat_rounded,        'المتكررة التلقائية',5),
-          _dSec('التحليل'),
-          _dItem(Icons.bar_chart_rounded,     'التقارير الشهرية',  6),
-          _dItem(Icons.pie_chart,             'تحليل التصنيفات',   7),
-          _dItem(Icons.insights_rounded,      'إحصائيات متقدمة',   9),
-          _dSec('المدفوعات'),
-          _dItem(Icons.receipt_long_outlined, 'الفواتير والاشتراكات', 10),
-          _dSec('الأدوات الذكية'),
-          _dItemNav(Icons.sms_outlined, 'ربط رسائل البنوك', () {
-            Navigator.pop(context);
-            Navigator.push(context, MaterialPageRoute(
-              builder: (_) => const SmsTemplatesScreen()));
-          }),
-          _dSec('الحساب'),
-          _dItem(Icons.settings_outlined,     'الإعدادات',         8),
+          _dSec(isAr ? 'الرئيسية'    : 'Home'),
+          _dItem(Icons.grid_view_rounded,      isAr ? 'لوحة التحكم'          : 'Dashboard',          0),
+          _dSec(isAr ? 'المعاملات'   : 'Transactions'),
+          _dItem(Icons.receipt_long_outlined,  isAr ? 'جميع المعاملات'       : 'All Transactions',   1),
+          _dItem(Icons.trending_up_rounded,    isAr ? 'المداخيل'             : 'Income',             2),
+          _dItem(Icons.trending_down_rounded,  isAr ? 'المصاريف'             : 'Expenses',           3),
+          _dSec(isAr ? 'التخطيط'     : 'Planning'),
+          _dItem(Icons.donut_large_outlined,   isAr ? 'الميزانية الشهرية'    : 'Monthly Budget',     4),
+          _dItem(Icons.repeat_rounded,         isAr ? 'المتكررة التلقائية'   : 'Auto Recurring',     5),
+          _dSec(isAr ? 'التحليل'     : 'Analysis'),
+          _dItem(Icons.bar_chart_rounded,      isAr ? 'التقارير الشهرية'     : 'Monthly Reports',    6),
+          _dItem(Icons.pie_chart,              isAr ? 'تحليل التصنيفات'      : 'Category Analysis',  7),
+          _dItem(Icons.insights_rounded,       isAr ? 'إحصائيات متقدمة'      : 'Advanced Analytics', 9),
+          _dSec(isAr ? 'المدفوعات'   : 'Payments'),
+          _dItem(Icons.receipt_long_outlined,  isAr ? 'الفواتير والاشتراكات' : 'Bills & Subscriptions', 10),
+          _dSec(isAr ? 'الأدوات الذكية' : 'Smart Tools'),
+          _dItemNav(Icons.sms_outlined,
+            isAr ? 'ربط رسائل البنوك' : 'Bank SMS Link',
+            () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(
+                builder: (_) => const SmsTemplatesScreen()));
+            }),
+          _dSec(isAr ? 'الحساب' : 'Account'),
+          _dItem(Icons.settings_outlined, l10n.settings, 8),
         ])),
+        // ── Footer ──
         Container(
           padding: const EdgeInsets.all(14),
           decoration: const BoxDecoration(
@@ -304,8 +271,8 @@ class _HomeScreenState extends State<HomeScreen> {
             TextButton.icon(
               onPressed: _logout,
               icon : const Icon(Icons.logout, color: WaColors.danger, size: 18),
-              label: const Text('خروج',
-                  style: TextStyle(color: WaColors.danger, fontSize: 13))),
+              label: Text(l10n.logout,
+                  style: const TextStyle(color: WaColors.danger, fontSize: 13))),
           ]),
         ),
       ])),
@@ -343,10 +310,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Bottom Nav ───────────────────────────────
   Widget _buildBottomNav(Color surf) {
-    final navIdx = _navOrder.contains(_pageIdx)
-        ? _navOrder.indexOf(_pageIdx) : -1;
+    final isAr  = context.read<AppProvider>().locale.languageCode == 'ar';
+    final navIdx = _navOrder.contains(_pageIdx) ? _navOrder.indexOf(_pageIdx) : -1;
+    final items = [
+      (Icons.grid_view_rounded,     Icons.grid_view,    isAr ? 'الرئيسية'   : 'Home'),
+      (Icons.receipt_long_outlined, Icons.receipt_long, isAr ? 'المعاملات'  : 'Transactions'),
+      (Icons.donut_large_outlined,  Icons.donut_large,  isAr ? 'الميزانية'  : 'Budget'),
+      (Icons.bar_chart_outlined,    Icons.bar_chart,    isAr ? 'التقارير'   : 'Reports'),
+    ];
     return Container(
       decoration: BoxDecoration(color: surf,
           border: const Border(top: BorderSide(color: WaColors.border))),
@@ -354,41 +326,31 @@ class _HomeScreenState extends State<HomeScreen> {
         color: Colors.transparent, elevation: 0,
         notchMargin: 6, shape: const CircularNotchedRectangle(),
         child: Row(children: [
-          ..._bItems(0, 2, navIdx),
+          ...List.generate(2, (i) => _bItem(items[i], i, navIdx)),
           const SizedBox(width: 64),
-          ..._bItems(2, 4, navIdx),
+          ...List.generate(2, (i) => _bItem(items[i + 2], i + 2, navIdx)),
         ]),
       ),
     );
   }
 
-  List<Widget> _bItems(int from, int to, int navIdx) {
-    const items = [
-      (Icons.grid_view_rounded,    Icons.grid_view,    'الرئيسية'),
-      (Icons.receipt_long_outlined,Icons.receipt_long, 'المعاملات'),
-      (Icons.donut_large_outlined, Icons.donut_large,  'الميزانية'),
-      (Icons.bar_chart_outlined,   Icons.bar_chart,    'التقارير'),
-    ];
-    return List.generate(to - from, (i) {
-      final idx    = from + i;
-      final active = navIdx == idx;
-      return Expanded(child: InkWell(
-        onTap: () => setState(() => _pageIdx = _navOrder[idx]),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(active ? items[idx].$2 : items[idx].$1, size: 22,
-              color: active ? WaColors.gold : WaColors.textMuted),
-          const SizedBox(height: 2),
-          Text(items[idx].$3, style: TextStyle(fontSize: 10,
-              fontWeight: active ? FontWeight.w700 : FontWeight.w400,
-              color: active ? WaColors.gold : WaColors.textMuted)),
-        ]),
-      ));
-    });
+  Widget _bItem(dynamic item, int idx, int navIdx) {
+    final active = navIdx == idx;
+    return Expanded(child: InkWell(
+      onTap: () => setState(() => _pageIdx = _navOrder[idx]),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(active ? item.$2 : item.$1, size: 22,
+            color: active ? WaColors.gold : WaColors.textMuted),
+        const SizedBox(height: 2),
+        Text(item.$3, style: TextStyle(fontSize: 10,
+            fontWeight: active ? FontWeight.w700 : FontWeight.w400,
+            color: active ? WaColors.gold : WaColors.textMuted)),
+      ]),
+    ));
   }
 
-  // ── FAB ──────────────────────────────────────
   Widget _buildFAB() => Container(
     width: 56, height: 56,
     decoration: BoxDecoration(shape: BoxShape.circle,
@@ -406,17 +368,18 @@ class _HomeScreenState extends State<HomeScreen> {
   );
 
   Future<void> _logout() async {
+    final l10n = AppLocalizations.of(context);
     Navigator.pop(context);
     final ok = await showDialog<bool>(context: context,
       builder: (_) => AlertDialog(
-        title  : const Text('تسجيل الخروج'),
-        content: const Text('هل تريد الخروج من حسابك؟'),
+        title  : Text(l10n.logoutConfirmTitle),
+        content: Text(l10n.logoutConfirmBody),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false),
-              child: const Text('إلغاء')),
+              child: Text(l10n.cancel)),
           TextButton(onPressed: () => Navigator.pop(context, true),
               style: TextButton.styleFrom(foregroundColor: WaColors.danger),
-              child: const Text('خروج')),
+              child: Text(l10n.logout)),
         ],
       ),
     );
@@ -430,9 +393,6 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 // ══════════════════════════════════════════════
-//  ✅ PageHost — يحمل الصفحات ويمرر onMenu callback
-//  يحل مشكلة Scaffold.of() التي لا تجد الـ drawer
-// ══════════════════════════════════════════════
 class _PageHost extends StatelessWidget {
   final int pageIdx;
   final List<Widget> pages;
@@ -443,38 +403,32 @@ class _PageHost extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    double _sx = 0; int _st = 0;
+    double sx = 0; int st = 0;
     return GestureDetector(
       onHorizontalDragStart: (d) {
-        _sx = d.globalPosition.dx;
-        _st = DateTime.now().millisecondsSinceEpoch;
+        sx = d.globalPosition.dx;
+        st = DateTime.now().millisecondsSinceEpoch;
       },
       onHorizontalDragEnd: (d) {
         final dx = d.velocity.pixelsPerSecond.dx;
-        final dt = DateTime.now().millisecondsSinceEpoch - _st;
+        final dt = DateTime.now().millisecondsSinceEpoch - st;
         if (dt > 400 || dx.abs() < 300) return;
         onSwipeNav(dx > 0 ? -1 : 1);
       },
-      // ✅ الحل: نُمرر onMenu عبر InheritedWidget بسيط
       child: MenuOpener(onMenu: onMenu,
         child: IndexedStack(index: pageIdx, children: pages)),
     );
   }
 }
 
-// ── InheritedWidget يوفر openDrawer لكل الشاشات ──
 class MenuOpener extends InheritedWidget {
   final VoidCallback onMenu;
   const MenuOpener({required this.onMenu, required super.child, super.key});
-
   static MenuOpener? of(BuildContext ctx) =>
       ctx.dependOnInheritedWidgetOfExactType<MenuOpener>();
-
   @override bool updateShouldNotify(MenuOpener old) => false;
 }
 
-// ══════════════════════════════════════════════
-//  Network Badge
 // ══════════════════════════════════════════════
 class _NetworkBadge extends StatefulWidget {
   final bool isOnline, syncing;
@@ -483,7 +437,7 @@ class _NetworkBadge extends StatefulWidget {
 }
 
 class _NetworkBadgeState extends State<_NetworkBadge> {
-  bool _visible = false;
+  bool   _visible = false;
   Timer? _hideTimer;
 
   @override
@@ -494,7 +448,6 @@ class _NetworkBadgeState extends State<_NetworkBadge> {
       setState(() => _visible = true);
       _scheduleHide();
     } else if (!shouldShow && _visible) {
-      // عند عودة الاتصال — اعرض "متصل" لثانيتين ثم أخفِ
       _scheduleHide(delay: const Duration(seconds: 2));
     }
   }
@@ -506,20 +459,18 @@ class _NetworkBadgeState extends State<_NetworkBadge> {
     });
   }
 
-  @override void dispose() {
-    _hideTimer?.cancel();
-    super.dispose();
-  }
+  @override void dispose() { _hideTimer?.cancel(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
-    if (!_visible && widget.isOnline && !widget.syncing)
-      return const SizedBox.shrink();
-
+    if (!_visible && widget.isOnline && !widget.syncing) return const SizedBox.shrink();
+    final isAr     = context.read<AppProvider>().locale.languageCode == 'ar';
     final isOffline = !widget.isOnline;
-    final label = isOffline ? '📡 بدون إنترنت — محفوظ محلياً'
-                : widget.syncing ? '🔄 جارٍ المزامنة...'
-                : '✅ تمت المزامنة';
+    final label = isOffline
+        ? (isAr ? '📡 بدون إنترنت — محفوظ محلياً' : '📡 Offline — saved locally')
+        : widget.syncing
+            ? (isAr ? '🔄 جارٍ المزامنة...' : '🔄 Syncing...')
+            : (isAr ? '✅ تمت المزامنة' : '✅ Synced');
     final color = isOffline ? WaColors.danger
                 : widget.syncing ? WaColors.gold
                 : WaColors.success;
@@ -538,8 +489,7 @@ class _NetworkBadgeState extends State<_NetworkBadge> {
             child: Text(label, style: TextStyle(fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: isOffline ? Colors.white : WaColors.obsidian)),
-          ).animate().slideY(begin: -1.0, duration: 400.ms,
-              curve: Curves.easeOut),
+          ).animate().slideY(begin: -1.0, duration: 400.ms, curve: Curves.easeOut),
         ),
       ),
     );
