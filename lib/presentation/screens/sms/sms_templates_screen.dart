@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/nav_stack_service.dart';
 import '../../../providers/sms_provider.dart';
 import '../../../providers/app_provider.dart';
 import '../../../data/models/sms_models.dart';
@@ -9,6 +10,23 @@ import '../../widgets/common/wa_card.dart';
 import 'sms_template_editor.dart';
 import 'unclassified_merchants_screen.dart';
 import '../../../generated/l10n/app_localizations.dart';
+
+// ── دفع شاشة تعديل القالب مع تسجيلها في NavStackService ─────
+// (مشتركة بين زر "إضافة قالب" وزر "تعديل" في البطاقة، حتى تُعاد
+// فتح نفس الشاشة تلقائياً إن أغلق النظام التطبيق في الخلفية)
+void pushSmsEditor(BuildContext context, [SmsTemplate? template]) {
+  NavStackService.push('sms_editor:${template?.id ?? 'new'}');
+  Navigator.push(context,
+    MaterialPageRoute(builder: (_) => SmsTemplateEditor(template: template)))
+    .then((_) => NavStackService.pop());
+}
+
+void _pushUnclassified(BuildContext context) {
+  NavStackService.push('sms_unclassified');
+  Navigator.push(context,
+    MaterialPageRoute(builder: (_) => const UnclassifiedMerchantsScreen()))
+    .then((_) => NavStackService.pop());
+}
 
 class SmsTemplatesScreen extends StatelessWidget {
   const SmsTemplatesScreen({super.key});
@@ -27,9 +45,7 @@ class SmsTemplatesScreen extends StatelessWidget {
               IconButton(
                 icon: const Icon(Icons.store_outlined),
                 tooltip: isAr ? 'تجار بدون تصنيف' : 'Unclassified merchants',
-                onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(
-                    builder: (_) => const UnclassifiedMerchantsScreen())),
+                onPressed: () => _pushUnclassified(context),
               ),
               Positioned(
                 top: 6, left: 6,
@@ -129,8 +145,7 @@ class SmsTemplatesScreen extends StatelessWidget {
   }
 
   void _openEditor(BuildContext context, [SmsTemplate? template]) =>
-    Navigator.push(context,
-      MaterialPageRoute(builder: (_) => SmsTemplateEditor(template: template)));
+    pushSmsEditor(context, template);
 
   void _showPermissionDialog(BuildContext context, SmsProvider sms, bool isAr) {
     showDialog(context: context, builder: (_) => AlertDialog(
@@ -246,8 +261,7 @@ class _TemplateCard extends StatelessWidget {
         const SizedBox(height: 10),
         Row(children: [
           _actionBtn(context, Icons.edit_outlined, isAr ? 'تعديل' : 'Edit',
-            WaColors.gold, () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => SmsTemplateEditor(template: template)))),
+            WaColors.gold, () => pushSmsEditor(context, template)),
           const SizedBox(width: 8),
           _actionBtn(context, Icons.delete_outline, isAr ? 'حذف' : 'Delete',
             WaColors.danger, () => _confirmDelete(context, sms)),

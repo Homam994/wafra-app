@@ -194,14 +194,24 @@ class SmsParseResult {
 // key   = اسم التاجر (lowercase, normalized)
 // value = categoryId من kExpenseCategories / kIncomeCategories
 class MerchantCache {
-  final Map<String, String> _data; // merchantKey → categoryId
+  final Map<String, String> _data; // merchantKey → "catId::subLabel" (subLabel قد تكون فارغة)
 
   MerchantCache(this._data);
 
   MerchantCache.empty() : _data = {};
 
   // ── بحث بالاسم الكامل أو جزء منه ─────────────────────
-  String? lookup(String merchantName) {
+  String? lookup(String merchantName) => _lookupRaw(merchantName)?.split('::').first;
+
+  // التصنيف الفرعي المحفوظ لهذا التاجر (إن وُجد)
+  String? lookupSub(String merchantName) {
+    final raw = _lookupRaw(merchantName);
+    if (raw == null) return null;
+    final parts = raw.split('::');
+    return parts.length > 1 && parts[1].isNotEmpty ? parts[1] : null;
+  }
+
+  String? _lookupRaw(String merchantName) {
     if (merchantName.isEmpty) return null;
     final key = _normalize(merchantName);
     // مطابقة تامة أولاً
@@ -215,8 +225,8 @@ class MerchantCache {
     return null;
   }
 
-  void set(String merchantName, String categoryId) {
-    _data[_normalize(merchantName)] = categoryId;
+  void set(String merchantName, String categoryId, [String subLabel = '']) {
+    _data[_normalize(merchantName)] = '$categoryId::$subLabel';
   }
 
   void remove(String merchantName) {

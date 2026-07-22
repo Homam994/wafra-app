@@ -5,9 +5,13 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/services/biometric_service.dart';
 
 class LockScreen extends StatefulWidget {
-  /// الشاشة التي تُفتح بعد نجاح التحقق
-  final Widget destination;
-  const LockScreen({super.key, required this.destination});
+  /// الشاشة التي تُفتح بعد نجاح التحقق (لأول تشغيل فقط).
+  /// إن كانت null، فهذا يعني أن الشاشة ظهرت كطبقة فوق شاشات
+  /// موجودة أصلاً (بعد تصغير التطبيق ثم العودة إليه)، وعندها
+  /// يكفي إغلاقها (pop) بعد النجاح للكشف عمّا كان مفتوحاً من قبل
+  /// دون فقدان أي بيانات أو تنقّل.
+  final Widget? destination;
+  const LockScreen({super.key, this.destination});
   @override State<LockScreen> createState() => _LockScreenState();
 }
 
@@ -46,10 +50,16 @@ class _LockScreenState extends State<LockScreen>
     if (!mounted) return;
 
     if (ok) {
+      if (widget.destination == null) {
+        // طبقة قفل مؤقتة فوق شاشات موجودة أصلاً — أغلقها فقط
+        // حتى تظهر نفس الشاشات كما كانت دون أي فقدان
+        Navigator.of(context).pop();
+        return;
+      }
       // ✅ الانتقال مباشرة من context الـ LockScreen — دائماً صالح
       Navigator.of(context).pushAndRemoveUntil(
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) => widget.destination,
+          pageBuilder: (_, __, ___) => widget.destination!,
           transitionDuration: const Duration(milliseconds: 350),
           transitionsBuilder: (_, a, __, c) =>
               FadeTransition(opacity: a, child: c),
@@ -66,7 +76,9 @@ class _LockScreenState extends State<LockScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg     = isDark ? WaColors.obsidian : WaColors.cream;
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
       backgroundColor: bg,
       body: SafeArea(
         child: Center(
@@ -157,6 +169,6 @@ class _LockScreenState extends State<LockScreen>
           ),
         ),
       ),
-    );
+    ));
   }
 }

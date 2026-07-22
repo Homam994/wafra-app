@@ -7,10 +7,13 @@ import 'package:fl_chart/fl_chart.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/categories.dart';
+import '../../../core/services/nav_stack_service.dart';
 import '../../../providers/app_provider.dart';
+import '../../../providers/sms_provider.dart';
 import '../../../data/models/models.dart';
 import '../../widgets/common/wa_card.dart';
 import '../../widgets/transaction/tx_list_item.dart';
+import '../sms/unclassified_merchants_screen.dart';
 import '../../../generated/l10n/app_localizations.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -31,6 +34,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final ap             = context.watch<AppProvider>();
+    final sms            = context.watch<SmsProvider>();
     final l10n           = AppLocalizations.of(context);
     final month          = _month;
     final isCurrentMonth = _monthOffset == 0;
@@ -127,13 +131,66 @@ class _DashboardScreenState extends State<DashboardScreen> {
             crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10,
             childAspectRatio: 1.55,
             children: [
-              _StatCard(isAr ? 'الرصيد الكلي' : 'Total Balance',  ap.fmt(balance), WaColors.gold,    Icons.account_balance_wallet_outlined),
+              _StatCard(isAr ? 'الرصيد الكلي' : 'Total Balance',
+                  '${balance < 0 ? '-' : ''}${ap.fmt(balance)}',
+                  balance < 0 ? WaColors.danger : WaColors.gold,
+                  Icons.account_balance_wallet_outlined),
               _StatCard(isAr ? 'معدل الادخار'  : 'Savings Rate',
                   income > 0 ? '$savePct%' : '—', WaColors.info, Icons.track_changes_rounded),
               _StatCard(isAr ? 'مصاريف الشهر' : 'Month Expenses', ap.fmt(expense), WaColors.danger,  Icons.trending_down_rounded),
               _StatCard(isAr ? 'مداخيل الشهر' : 'Month Income',   ap.fmt(income),  WaColors.success, Icons.trending_up_rounded),
             ],
           ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.08),
+
+          // ── اختصار: تجار بدون تصنيف ──────────────────
+          if (sms.unclassified.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () {
+                NavStackService.push('sms_unclassified');
+                Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => const UnclassifiedMerchantsScreen()))
+                  .then((_) => NavStackService.pop());
+              },
+              child: Container(
+                padding: const EdgeInsets.all(13),
+                decoration: BoxDecoration(
+                  color : WaColors.gold.withValues(alpha: 0.08),
+                  border: Border.all(color: WaColors.gold.withValues(alpha: 0.3)),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(children: [
+                  Container(
+                    width: 36, height: 36,
+                    decoration: BoxDecoration(
+                      color: WaColors.gold.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Center(child: Text('🏪', style: TextStyle(fontSize: 17))),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isAr ? '${sms.unclassified.length} تاجر بحاجة لتصنيف'
+                             : '${sms.unclassified.length} merchants need classification',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                      ),
+                      Text(
+                        isAr ? 'اضغط لتصنيفهم الآن' : 'Tap to classify now',
+                        style: TextStyle(fontSize: 11, color: WaColors.textMuted),
+                      ),
+                    ],
+                  )),
+                  Icon(
+                    isAr ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+                    color: WaColors.gold,
+                  ),
+                ]),
+              ),
+            ).animate().fadeIn(duration: 300.ms),
+          ],
 
           const SizedBox(height: 14),
 

@@ -7,12 +7,16 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/nav_stack_service.dart';
 import '../../../providers/app_provider.dart';
 import '../../../providers/sms_provider.dart';
 import '../../../data/services/biometric_service.dart';
 import '../auth/lock_screen.dart';
 import '../quick_add/quick_add_screen.dart';
 import '../sms/sms_templates_screen.dart';
+import '../sms/sms_template_editor.dart';
+import '../sms/unclassified_merchants_screen.dart';
+import '../../../data/models/sms_models.dart';
 import '../auth/login_screen.dart';
 import '../dashboard/dashboard_screen.dart';
 import '../transactions/transactions_screen.dart';
@@ -53,11 +57,14 @@ class _HomeScreenState extends State<HomeScreen> {
     BillsScreen(),
   ];
   static const _navOrder = [0, 1, 4, 6];
+  static const _kLastPageKey = 'wafra_last_page_idx';
 
   @override
   void initState() {
     super.initState();
     _initNetwork();
+    _restoreLastPage();
+    _restoreSubNav();
     _loadLockBgSetting();
 
     // Register handler for when app is already running
@@ -121,6 +128,66 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() { _lifecycleListener.dispose(); super.dispose(); }
 
+  Future<void> _restoreLastPage() async {
+    final p   = await SharedPreferences.getInstance();
+    final idx = p.getInt(_kLastPageKey);
+    if (idx != null && idx >= 0 && idx < _pages.length && mounted) {
+      setState(() => _pageIdx = idx);
+    }
+  }
+
+  Future<void> _savePage(int idx) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setInt(_kLastPageKey, idx);
+  }
+
+  void _goToPage(int idx) {
+    setState(() => _pageIdx = idx);
+    _savePage(idx);
+  }
+
+  // إعادة فتح الشاشات الفرعية (ربط الرسائل، تعديل قالب...) التي
+  // كانت مفتوحة قبل إغلاق النظام للتطبيق في الخلفية
+  Future<void> _restoreSubNav() async {
+    final stack = await NavStackService.restore();
+    if (stack.isEmpty || !mounted) return;
+
+    // القوالب تُحمَّل محلياً وسريعاً — ننتظرها قليلاً كي تتوفر
+    // قبل محاولة العثور على القالب المطلوب في شاشة التعديل
+    final smsP = context.read<SmsProvider>();
+    var waited = 0;
+    while (smsP.isLoading && waited < 20 && mounted) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      waited++;
+    }
+    if (!mounted) return;
+
+    for (final entry in stack) {
+      if (!mounted) return;
+      if (entry == 'sms_templates') {
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => const SmsTemplatesScreen()))
+          .then((_) => NavStackService.pop());
+      } else if (entry == 'sms_unclassified') {
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => const UnclassifiedMerchantsScreen()))
+          .then((_) => NavStackService.pop());
+      } else if (entry.startsWith('sms_editor:')) {
+        final id  = entry.substring('sms_editor:'.length);
+        SmsTemplate? tpl;
+        if (id != 'new') {
+          for (final t in smsP.templates) {
+            if (t.id == id) { tpl = t; break; }
+          }
+          if (tpl == null) continue; // القالب حُذف بين الحين والآخر
+        }
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => SmsTemplateEditor(template: tpl)))
+          .then((_) => NavStackService.pop());
+      }
+    }
+  }
+
   Future<void> _loadLockBgSetting() async {
     final p   = await SharedPreferences.getInstance();
     final bio = context.read<BiometricService>();
@@ -135,12 +202,14 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showLockOverlay() {
     if (!mounted) return;
     setState(() => _isLocked = false);
-    Navigator.of(context).pushAndRemoveUntil(
+    // ندفع شاشة القفل كطبقة فوق ما هو مفتوح حالياً (بدل حذف كل
+    // المكدس وبناء HomeScreen جديدة) حتى لا نفقد أي شاشة فرعية
+    // مفتوحة (مثل تعديل قالب SMS) أو نصاً لم يُحفظ بعد.
+    Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const LockScreen(destination: HomeScreen()),
+        pageBuilder: (_, __, ___) => const LockScreen(destination: null),
         transitionDuration: Duration.zero,
       ),
-      (_) => false,
     );
   }
 
@@ -196,7 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final next = pos + delta;
     if (next < 0 || next >= _navOrder.length) return;
     HapticFeedback.selectionClick();
-    setState(() => _pageIdx = _navOrder[next]);
+    _goToPage(_navOrder[next]);
   }
 
   Widget _buildDrawer() {
@@ -250,8 +319,10 @@ class _HomeScreenState extends State<HomeScreen> {
             isAr ? 'ربط رسائل البنوك' : 'Bank SMS Link',
             () {
               Navigator.pop(context);
+              NavStackService.push('sms_templates');
               Navigator.push(context, MaterialPageRoute(
-                builder: (_) => const SmsTemplatesScreen()));
+                builder: (_) => const SmsTemplatesScreen()))
+                .then((_) => NavStackService.pop());
             }),
           _dSec(isAr ? 'الحساب' : 'Account'),
           _dItem(Icons.settings_outlined, l10n.settings, 8),
@@ -306,7 +377,7 @@ class _HomeScreenState extends State<HomeScreen> {
       selectedTileColor : WaColors.gold.withValues(alpha: 0.07),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.horizontal(left: Radius.circular(8))),
-      onTap: () { setState(() => _pageIdx = idx); Navigator.pop(context); },
+      onTap: () { _goToPage(idx); Navigator.pop(context); },
     );
   }
 
@@ -337,7 +408,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _bItem(dynamic item, int idx, int navIdx) {
     final active = navIdx == idx;
     return Expanded(child: InkWell(
-      onTap: () => setState(() => _pageIdx = _navOrder[idx]),
+      onTap: () => _goToPage(_navOrder[idx]),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center, children: [

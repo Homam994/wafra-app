@@ -57,8 +57,8 @@ class UnclassifiedMerchantsScreen extends StatelessWidget {
                 ...sms.unclassified.asMap().entries.map((e) =>
                   _MerchantCard(
                     merchant: e.value,
-                    onClassify: (catId) =>
-                        sms.classifyMerchant(e.value.name, catId),
+                    onClassify: (catId, subLabel) =>
+                        sms.classifyMerchant(e.value.name, catId, subLabel),
                     onDismiss: () => sms.dismissMerchant(e.value.name),
                   ).animate().fadeIn(
                     delay   : Duration(milliseconds: e.key * 60),
@@ -110,7 +110,7 @@ class UnclassifiedMerchantsScreen extends StatelessWidget {
 // ══════════════════════════════════════════════════════════
 class _MerchantCard extends StatefulWidget {
   final UnclassifiedMerchant merchant;
-  final ValueChanged<String>  onClassify;
+  final void Function(String catId, String subLabel) onClassify;
   final VoidCallback          onDismiss;
 
   const _MerchantCard({
@@ -125,6 +125,7 @@ class _MerchantCard extends StatefulWidget {
 
 class _MerchantCardState extends State<_MerchantCard> {
   String? _selectedCat;
+  String? _selectedSub;
   bool    _expanded = false;
 
   @override
@@ -204,7 +205,8 @@ class _MerchantCardState extends State<_MerchantCard> {
               decoration: BoxDecoration(
                 color : _selectedCat != null
                     ? WaColors.gold.withValues(alpha: 0.1)
-                    : WaColors.obsidian3,
+                    : (Theme.of(context).brightness == Brightness.dark
+                        ? WaColors.obsidian3 : const Color(0xFFEDE9E0)),
                 border: Border.all(
                   color: _selectedCat != null
                       ? WaColors.gold.withValues(alpha: 0.4)
@@ -260,6 +262,7 @@ class _MerchantCardState extends State<_MerchantCard> {
                 return GestureDetector(
                   onTap: () => setState(() {
                     _selectedCat = cat.id;
+                    _selectedSub = null;
                     _expanded    = false;
                   }),
                   child: AnimatedContainer(
@@ -267,7 +270,8 @@ class _MerchantCardState extends State<_MerchantCard> {
                     decoration: BoxDecoration(
                       color : isSel
                           ? WaColors.gold.withValues(alpha: 0.15)
-                          : WaColors.obsidian3,
+                          : (Theme.of(context).brightness == Brightness.dark
+                              ? WaColors.obsidian3 : const Color(0xFFEDE9E0)),
                       border: Border.all(
                         color: isSel
                             ? WaColors.gold.withValues(alpha: 0.6)
@@ -304,13 +308,62 @@ class _MerchantCardState extends State<_MerchantCard> {
             ),
           ],
 
+          // ── اختيار التصنيف الفرعي (اختياري) ───────────
+          if (_selectedCat != null)
+            Builder(builder: (context) {
+              final selCat = cats.firstWhere(
+                (c) => c.id == _selectedCat, orElse: () => cats.first);
+              if (selCat.subs.isEmpty) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('تصنيف فرعي (اختياري)',
+                    style: TextStyle(fontSize: 10, letterSpacing: 1.2,
+                        color: WaColors.textMuted)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6, runSpacing: 6,
+                    children: selCat.subs.map((sub) {
+                      final isSel = _selectedSub == sub.label;
+                      return GestureDetector(
+                        onTap: () => setState(() =>
+                            _selectedSub = isSel ? null : sub.label),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 140),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color : isSel
+                                ? selCat.color.withValues(alpha: 0.14)
+                                : (Theme.of(context).brightness == Brightness.dark
+                                    ? WaColors.obsidian3 : const Color(0xFFEDE9E0)),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isSel ? selCat.color : WaColors.border,
+                              width: isSel ? 1.5 : 1),
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Text(sub.emoji, style: const TextStyle(fontSize: 14)),
+                            const SizedBox(width: 4),
+                            Text(sub.label, style: TextStyle(fontSize: 12,
+                              fontWeight: isSel ? FontWeight.w600 : FontWeight.w400,
+                              color: isSel ? selCat.color : WaColors.textSecondary)),
+                          ]),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ]),
+              );
+            }),
+
           // ── زر الحفظ ─────────────────────────────────
           if (_selectedCat != null) ...[
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () => widget.onClassify(_selectedCat!),
+                onPressed: () => widget.onClassify(_selectedCat!, _selectedSub ?? ''),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: WaColors.gold,
                   foregroundColor: WaColors.obsidian,

@@ -11,6 +11,7 @@ class SmsStorageService {
   static const _kMerchants     = 'wafra_sms_merchants';
   static const _kUnclassified  = 'wafra_sms_unclassified';
   static const _kSmsEnabled    = 'wafra_sms_enabled';
+  static const _kDraft         = 'wafra_sms_template_draft';
 
   // ══════════════════════════════════════
   //  القوالب
@@ -72,9 +73,9 @@ class SmsStorageService {
     await p.setString(_kMerchants, jsonEncode(cache.toMap()));
   }
 
-  Future<void> setMerchantCategory(String name, String categoryId) async {
+  Future<void> setMerchantCategory(String name, String categoryId, [String subCategory = '']) async {
     final cache = await loadMerchants();
-    cache.set(name, categoryId);
+    cache.set(name, categoryId, subCategory);
     await saveMerchants(cache);
   }
 
@@ -145,11 +146,49 @@ class SmsStorageService {
   // ══════════════════════════════════════
   //  مسح كل البيانات (للتطوير/الاختبار)
   // ══════════════════════════════════════
+  // ══════════════════════════════════════
+  //  مسودة قالب لم يُحفظ بعد
+  //  (لتفادي فقدان النص إن أغلق النظام التطبيق في الخلفية
+  //   أثناء تعبئة القالب، مثلاً عند نسخ رسالة SMS من تطبيق آخر)
+  // ══════════════════════════════════════
+
+  Future<void> saveDraft({
+    required String bankName,
+    required String senderName,
+    required String sampleMessage,
+    required List<TaggedSpan> spans,
+    required int step,
+  }) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_kDraft, jsonEncode({
+      'bankName'     : bankName,
+      'senderName'   : senderName,
+      'sampleMessage': sampleMessage,
+      'spans'        : spans.map((s) => s.toMap()).toList(),
+      'step'         : step,
+    }));
+  }
+
+  Future<Map<String, dynamic>?> loadDraft() async {
+    final p   = await SharedPreferences.getInstance();
+    final raw = p.getString(_kDraft);
+    if (raw == null) return null;
+    try {
+      return Map<String, dynamic>.from(jsonDecode(raw));
+    } catch (_) { return null; }
+  }
+
+  Future<void> clearDraft() async {
+    final p = await SharedPreferences.getInstance();
+    await p.remove(_kDraft);
+  }
+
   Future<void> clearAll() async {
     final p = await SharedPreferences.getInstance();
     await p.remove(_kTemplates);
     await p.remove(_kMerchants);
     await p.remove(_kUnclassified);
     await p.remove(_kSmsEnabled);
+    await p.remove(_kDraft);
   }
 }

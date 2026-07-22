@@ -131,6 +131,7 @@ class SmsProvider extends ChangeNotifier {
     // ٢. ابحث عن التصنيف في قاموس التجار
     final desc     = result.description ?? '';
     final category = desc.isNotEmpty ? _merchants.lookup(desc) : null;
+    final subCat   = desc.isNotEmpty ? _merchants.lookupSub(desc) : null;
 
     // ٣. أنشئ المعاملة
     final today = receivedAt.toIso8601String().split('T').first;
@@ -138,7 +139,7 @@ class SmsProvider extends ChangeNotifier {
       id       : '',
       type     : result.txType == 'income' ? TxType.income : TxType.expense,
       cat      : category ?? _defaultCategory(result.txType),
-      sub      : '',
+      sub      : subCat ?? '',
       amount   : result.amount!,
       note     : desc.isNotEmpty ? desc : result.bankName ?? '',
       date     : today,
@@ -237,8 +238,8 @@ class SmsProvider extends ChangeNotifier {
   // ══════════════════════════════════════
 
   // تصنيف تاجر غير مُصنَّف + حذفه من القائمة
-  Future<void> classifyMerchant(String merchantName, String categoryId) async {
-    await _storage.setMerchantCategory(merchantName, categoryId);
+  Future<void> classifyMerchant(String merchantName, String categoryId, [String subCategory = '']) async {
+    await _storage.setMerchantCategory(merchantName, categoryId, subCategory);
     await _storage.removeUnclassified(merchantName);
     _merchants    = await _storage.loadMerchants();
     _unclassified = await _storage.loadUnclassified();
@@ -295,6 +296,27 @@ class SmsProvider extends ChangeNotifier {
   // ══════════════════════════════════════
   String _defaultCategory(String txType) =>
       txType == 'income' ? 'other_income' : 'shopping';
+
+  // ══════════════════════════════════════
+  //  مسودة قالب لم يُحفظ بعد (انظر SmsStorageService.saveDraft)
+  // ══════════════════════════════════════
+  Future<void> saveTemplateDraft({
+    required String bankName,
+    required String senderName,
+    required String sampleMessage,
+    required List<TaggedSpan> spans,
+    required int step,
+  }) => _storage.saveDraft(
+    bankName     : bankName,
+    senderName   : senderName,
+    sampleMessage: sampleMessage,
+    spans        : spans,
+    step         : step,
+  );
+
+  Future<Map<String, dynamic>?> loadTemplateDraft() => _storage.loadDraft();
+
+  Future<void> clearTemplateDraft() => _storage.clearDraft();
 
   // توليد ID فريد للقالب
   String generateId() =>

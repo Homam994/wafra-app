@@ -36,11 +36,48 @@ class _SmsTemplateEditorState extends State<SmsTemplateEditor> {
       _senderCtrl.text = t.senderName;
       _msgCtrl.text    = t.sampleMessage;
       _spans           = List.from(t.spans);
+    } else {
+      // قالب جديد لم يُحفظ بعد — حاول استعادة أي مسودة سابقة
+      // (مثلاً إن أُغلق التطبيق في الخلفية أثناء التعبئة)
+      WidgetsBinding.instance.addPostFrameCallback((_) => _restoreDraft());
     }
+    _bankCtrl.addListener(_persistDraft);
+    _senderCtrl.addListener(_persistDraft);
+    _msgCtrl.addListener(_persistDraft);
+  }
+
+  Future<void> _restoreDraft() async {
+    if (!mounted || widget.template != null) return;
+    final draft = await context.read<SmsProvider>().loadTemplateDraft();
+    if (draft == null || !mounted) return;
+    setState(() {
+      _bankCtrl.text   = draft['bankName']      ?? '';
+      _senderCtrl.text = draft['senderName']    ?? '';
+      _msgCtrl.text    = draft['sampleMessage'] ?? '';
+      _spans           = (draft['spans'] as List? ?? [])
+          .map((s) => TaggedSpan.fromMap(Map<String, dynamic>.from(s)))
+          .toList();
+      _step            = (draft['step'] as int?) ?? 0;
+    });
+  }
+
+  void _persistDraft() {
+    // فقط للقوالب الجديدة غير المحفوظة — قوالب التعديل موجودة أصلاً في Firestore
+    if (widget.template != null || !mounted) return;
+    context.read<SmsProvider>().saveTemplateDraft(
+      bankName     : _bankCtrl.text,
+      senderName   : _senderCtrl.text,
+      sampleMessage: _msgCtrl.text,
+      spans        : _spans,
+      step         : _step,
+    );
   }
 
   @override
   void dispose() {
+    _bankCtrl.removeListener(_persistDraft);
+    _senderCtrl.removeListener(_persistDraft);
+    _msgCtrl.removeListener(_persistDraft);
     _bankCtrl.dispose(); _senderCtrl.dispose();
     _msgCtrl.dispose();  _testCtrl.dispose();
     super.dispose();
@@ -187,8 +224,10 @@ class _SmsTemplateEditorState extends State<SmsTemplateEditor> {
               spacing: 6, runSpacing: 4,
               children: _spans.map((s) => _SpanChip(
                 span: s,
-                onDelete: () => setState(() =>
-                    _spans.removeWhere((x) => x.start == s.start && x.end == s.end)),
+                onDelete: () => setState(() {
+                    _spans.removeWhere((x) => x.start == s.start && x.end == s.end);
+                    _persistDraft();
+                }),
               )).toList(),
             ),
           ],
@@ -205,6 +244,7 @@ class _SmsTemplateEditorState extends State<SmsTemplateEditor> {
       _spans.add(TaggedSpan(text: text, type: _selectedType, start: start, end: end));
       _spans.sort((a, b) => a.start.compareTo(b.start));
     });
+    _persistDraft();
   }
 
   // ── Step 2: Test ─────────────────────────────────────
@@ -281,7 +321,7 @@ class _SmsTemplateEditorState extends State<SmsTemplateEditor> {
       child: Row(children: [
         if (_step > 0)
           Expanded(flex: 1, child: OutlinedButton(
-            onPressed: () => setState(() => _step--),
+            onPressed: () { setState(() => _step--); _persistDraft(); },
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: WaColors.border),
               padding: const EdgeInsets.symmetric(vertical: 13),
@@ -315,10 +355,12 @@ class _SmsTemplateEditorState extends State<SmsTemplateEditor> {
       final err = _validateStep0(isAr);
       if (err != null) { _snack(err, isErr: true); return; }
       setState(() => _step = 1);
+      _persistDraft();
     } else if (_step == 1) {
       final err = _validateStep1();
       if (err != null) { _snack(err, isErr: true); return; }
       setState(() { _step = 2; _testResult = null; });
+      _persistDraft();
     } else {
       await _save();
     }
@@ -341,6 +383,7 @@ class _SmsTemplateEditorState extends State<SmsTemplateEditor> {
       final tpl = _buildTemplate();
       if (widget.template == null) await sms.addTemplate(tpl);
       else                         await sms.updateTemplate(tpl);
+      if (widget.template == null) await sms.clearTemplateDraft();
       if (mounted) {
         _snack(isAr ? '✅ تم حفظ القالب بنجاح' : '✅ Template saved successfully');
         Navigator.pop(context);

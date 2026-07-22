@@ -53,9 +53,14 @@ class TxListItem extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 '${cat?.localizedLabel(lang) ?? tx.cat}'
-                '${tx.note.isNotEmpty ? " · ${tx.note}" : ""}'
-                ' · ${_fmtDate(tx.date, lang)}',
+                '${tx.note.isNotEmpty ? " · ${tx.note}" : ""}',
                 style: const TextStyle(fontSize: 11, color: WaColors.textMuted),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 2),
+              Text(
+                _fmtDate(tx.date, lang),
+                style: const TextStyle(fontSize: 10, color: WaColors.textMuted),
                 overflow: TextOverflow.ellipsis),
             ],
           )),

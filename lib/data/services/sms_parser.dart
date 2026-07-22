@@ -20,46 +20,56 @@ class SmsParser {
     required List<SmsTemplate> templates,
     required DateTime receivedAt,
   }) {
-    final template = _findTemplate(sender, templates);
-    if (template == null) return null;
-
     if (_isOtpOrVerification(message)) return null;
 
-    final txType = _detectType(message, template);
-    if (txType == 'unknown') return null;
+    // قد يوجد أكثر من قالب لنفس المُرسِل (مثلاً قالب للمصروفات
+    // وآخر منفصل للدخل/الراتب بصيغة مختلفة تمامًا). يجب تجربة
+    // كل القوالب المطابقة للمُرسِل وليس الاكتفاء بأول واحد،
+    // وإلا فإن رسائل الدخل ستُهمَل إن كان القالب الأول المطابق
+    // للمُرسِل هو قالب مصروفات لا يحتوي كلمات دخل.
+    final candidates = _findTemplates(sender, templates);
+    if (candidates.isEmpty) return null;
 
-    final amount = _extractAmount(message, template);
-    if (amount == null || amount <= 0) return null;
+    for (final template in candidates) {
+      final txType = _detectType(message, template);
+      if (txType == 'unknown') continue;
 
-    final description = _extractDescription(message, template);
+      final amount = _extractAmount(message, template);
+      if (amount == null || amount <= 0) continue;
 
-    return SmsParseResult(
-      isMatch    : true,
-      templateId : template.id,
-      bankName   : template.bankName,
-      amount     : amount,
-      description: description,
-      txType     : txType,
-      rawMessage : message,
-      receivedAt : receivedAt,
-    );
+      final description = _extractDescription(message, template);
+
+      return SmsParseResult(
+        isMatch    : true,
+        templateId : template.id,
+        bankName   : template.bankName,
+        amount     : amount,
+        description: description,
+        txType     : txType,
+        rawMessage : message,
+        receivedAt : receivedAt,
+      );
+    }
+
+    return null;
   }
 
   // ══════════════════════════════════════
-  //  مطابقة القالب بالمُرسِل
+  //  مطابقة كل القوالب الممكنة بالمُرسِل
   // ══════════════════════════════════════
-  SmsTemplate? _findTemplate(String sender, List<SmsTemplate> templates) {
+  List<SmsTemplate> _findTemplates(String sender, List<SmsTemplate> templates) {
     final senderNorm = sender.trim().toLowerCase();
+    final matches = <SmsTemplate>[];
     for (final t in templates) {
       if (!t.isEnabled) continue;
       final tNorm = t.senderName.trim().toLowerCase();
       if (senderNorm == tNorm ||
           senderNorm.contains(tNorm) ||
           tNorm.contains(senderNorm)) {
-        return t;
+        matches.add(t);
       }
     }
-    return null;
+    return matches;
   }
 
   // ══════════════════════════════════════
