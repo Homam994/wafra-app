@@ -9,11 +9,10 @@ import '../../../data/models/sms_models.dart';
 import '../../widgets/common/wa_card.dart';
 import 'sms_template_editor.dart';
 import 'unclassified_merchants_screen.dart';
+import 'classified_merchants_screen.dart';
 import '../../../generated/l10n/app_localizations.dart';
 
 // ── دفع شاشة تعديل القالب مع تسجيلها في NavStackService ─────
-// (مشتركة بين زر "إضافة قالب" وزر "تعديل" في البطاقة، حتى تُعاد
-// فتح نفس الشاشة تلقائياً إن أغلق النظام التطبيق في الخلفية)
 void pushSmsEditor(BuildContext context, [SmsTemplate? template]) {
   NavStackService.push('sms_editor:${template?.id ?? 'new'}');
   Navigator.push(context,
@@ -25,6 +24,13 @@ void _pushUnclassified(BuildContext context) {
   NavStackService.push('sms_unclassified');
   Navigator.push(context,
     MaterialPageRoute(builder: (_) => const UnclassifiedMerchantsScreen()))
+    .then((_) => NavStackService.pop());
+}
+
+void _pushClassified(BuildContext context) {
+  NavStackService.push('sms_classified');
+  Navigator.push(context,
+    MaterialPageRoute(builder: (_) => const ClassifiedMerchantsScreen()))
     .then((_) => NavStackService.pop());
 }
 
@@ -40,6 +46,11 @@ class SmsTemplatesScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(isAr ? 'ربط رسائل البنوك' : 'Bank SMS Link'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.storefront_outlined),
+            tooltip: isAr ? 'التجار المصنَّفون' : 'Classified merchants',
+            onPressed: () => _pushClassified(context),
+          ),
           if (sms.unclassifiedCount > 0)
             Stack(children: [
               IconButton(

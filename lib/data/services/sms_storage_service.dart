@@ -79,6 +79,12 @@ class SmsStorageService {
     await saveMerchants(cache);
   }
 
+  Future<void> removeMerchantCategory(String name) async {
+    final cache = await loadMerchants();
+    cache.remove(name);
+    await saveMerchants(cache);
+  }
+
   // ══════════════════════════════════════
   //  التجار غير المُصنَّفين
   // ══════════════════════════════════════

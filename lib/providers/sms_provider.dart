@@ -147,13 +147,15 @@ class SmsProvider extends ChangeNotifier {
       updatedAt: null,
     );
 
-    // ٤. سجّل في Firestore تلقائياً
-    try {
-      await _repo.addTx(_currentUid!, tx);
-    } catch (e) {
+    // ٤. سجّل في Firestore — بدون انتظار (fire-and-forget):
+    //    التخزين المؤقت لـ Firestore يحفظ الكتابة محلياً فوراً حتى بلا
+    //    إنترنت، وتُرفع للسيرفر تلقائياً عند عودة الاتصال. لو استخدمنا
+    //    await هنا فلن تكتمل بقية الخطوات (الإشعار، تصنيف التاجر) ولن
+    //    تُعالَج أي رسالة SMS تالية في الطابور إلا بعد عودة الإنترنت،
+    //    لأن الجانب الأصلي (Kotlin) ينتظر انتهاء هذه الدالة قبل الاستمرار.
+    _repo.addTx(_currentUid!, tx).catchError((e) {
       debugPrint('SmsProvider: failed to save tx: $e');
-      return;
-    }
+    });
 
     // ٥. أشعر المستخدم (snackbar داخل التطبيق)
     final amountStr = result.amount!.toStringAsFixed(2);
@@ -243,6 +245,13 @@ class SmsProvider extends ChangeNotifier {
     await _storage.removeUnclassified(merchantName);
     _merchants    = await _storage.loadMerchants();
     _unclassified = await _storage.loadUnclassified();
+    notifyListeners();
+  }
+
+  // تغيير/إزالة تصنيف تاجر مصنَّف مسبقاً
+  Future<void> removeMerchantCategory(String merchantName) async {
+    await _storage.removeMerchantCategory(merchantName);
+    _merchants = await _storage.loadMerchants();
     notifyListeners();
   }
 

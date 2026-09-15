@@ -18,6 +18,7 @@ import 'providers/app_provider.dart';
 import 'providers/sms_provider.dart';
 import 'data/services/sms_storage_service.dart';
 import 'data/services/sms_parser.dart';
+import 'core/services/sms_headless_service.dart';
 import 'presentation/screens/auth/splash_screen.dart';
 import 'firebase_options.dart';
 import 'data/services/notification_service.dart';
@@ -118,6 +119,25 @@ class WafraApp extends StatelessWidget {
       ),
     );
   }
+}
+
+// ════════════════════════════════════════════════════════════
+// SMS HEADLESS ENTRY POINT (مستقل تماماً — بلا واجهة إطلاقاً)
+// يُستدعى من HeadlessSmsEngine.kt عندما يصل SMS بنكي والتطبيق مغلق
+// ════════════════════════════════════════════════════════════
+@pragma('vm:entry-point')
+void smsHeadlessMain() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform);
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
+      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+    );
+  } catch (_) {}
+
+  await runHeadlessSmsProcessing();
 }
 
 // ════════════════════════════════════════════════════════════

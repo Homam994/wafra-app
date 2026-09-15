@@ -119,8 +119,11 @@ class SmsReceiver : BroadcastReceiver() {
             // ── ٢. إن كان التطبيق مفتوحاً → ابدأ flush فوري ──
             if (MainActivity.smsChannel != null) {
                 flushPendingMessages(context)
+            } else {
+                // التطبيق مغلق تماماً — شغّل محرّك Flutter مستقل بلا واجهة
+                // لمعالجة الرسالة فوراً دون الحاجة لفتح التطبيق
+                HeadlessSmsEngine.run(context)
             }
-            // إن كان مغلقاً → الرسالة محفوظة وستُرسَل عند الفتح
         }
     }
 

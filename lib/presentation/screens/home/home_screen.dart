@@ -16,6 +16,7 @@ import '../quick_add/quick_add_screen.dart';
 import '../sms/sms_templates_screen.dart';
 import '../sms/sms_template_editor.dart';
 import '../sms/unclassified_merchants_screen.dart';
+import '../sms/classified_merchants_screen.dart';
 import '../../../data/models/sms_models.dart';
 import '../auth/login_screen.dart';
 import '../dashboard/dashboard_screen.dart';
@@ -171,6 +172,10 @@ class _HomeScreenState extends State<HomeScreen> {
       } else if (entry == 'sms_unclassified') {
         Navigator.push(context, MaterialPageRoute(
           builder: (_) => const UnclassifiedMerchantsScreen()))
+          .then((_) => NavStackService.pop());
+      } else if (entry == 'sms_classified') {
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => const ClassifiedMerchantsScreen()))
           .then((_) => NavStackService.pop());
       } else if (entry.startsWith('sms_editor:')) {
         final id  = entry.substring('sms_editor:'.length);
